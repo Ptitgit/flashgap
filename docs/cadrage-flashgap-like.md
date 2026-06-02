@@ -1,444 +1,800 @@
-# Cadrage decisionnel pour une application type Flashgap
+# Cadrage decisionnel — application type Flashgap
 
-## 1. Resume executif
+## Comment utiliser ce document
 
-Ce document ne specifie pas l'implementation de l'application. Il sert a choisir rapidement une direction produit et technique pour une v1 utilisee ponctuellement, non commercialisee, par environ `12 personnes`.
+Ce document sert a **prendre des decisions une par une**, puis a en deduire un **plan de projet version par version** jusqu'a l'aboutissement.
 
-Le cadre retenu est le suivant:
+### Methode
 
-- application `iOS + Android`
-- photos prises `dans l'app`, en `haute definition`
-- photos `non visibles avant une heure d'ouverture`
-- `souverainete limitee aux photos`
-- `GitHub` et `GitHub Actions` acceptes
-- `Mac local` disponible pour developper et construire l'app iOS
-- decision `Apple Developer Program` encore ouverte
+1. Lire la section **Invariants** (non negociables).
+2. Repondre aux **questions dans l'ordre** (Q1 → Q12). Ne pas sauter une question tant que la precedente n'est pas tranchee.
+3. Remplir le **registre des decisions** en bas de chaque question.
+4. Une fois toutes les questions repondues, suivre le **plan detaille par version** (section 6).
+5. Cocher les **criteres de sortie** de chaque etape avant de passer a la suivante.
 
-La recommandation provisoire est:
+### Vue d'ensemble des versions
 
-1. partir sur `React Native bare + TypeScript`
-2. prendre `Supabase` pour le backend minimal et les metadonnees
-3. stocker toutes les `photos` sur `Scaleway Object Storage` en region `Paris`
-4. developper iOS au debut avec `Xcode` sur le `Mac local`
-5. reporter la decision `Apple Developer Program` jusqu'au premier vrai test multi-appareils
-6. utiliser `GitHub Actions` pour lint, tests, builds Android et checks backend
-7. n'automatiser les builds iOS qu'en second temps, soit depuis le Mac local, soit via `self-hosted runner`
-
-> **Recommandation**
-> La combinaison la plus pragmatique pour une v1 ponctuelle est `React Native bare + Supabase + Scaleway Object Storage`.
-
-> **Pourquoi**
-> C'est la combinaison qui minimise le temps de delivery tout en gardant les photos sur un stockage europeen compatible S3, sans imposer un backend custom trop lourd.
-
-> **Risques**
-> Les metadonnees ne seront pas souveraines. La distribution iPhone restera le vrai point bloquant tant que le choix Apple n'est pas tranche.
-
-> **Decision a reporter**
-> Le `Apple Developer Program` peut etre differe pendant la phase de cadrage et de prototype, mais il devient bloquant avant un vrai test sur `12 iPhones`.
-
----
-
-## 2. Hypotheses produit
-
-### Perimetre produit v1
-
-- un organisateur cree un `album-soiree`
-- les invites rejoignent via un `code`
-- les photos sont prises `dans l'application`
-- chaque photo est uploadee vers un stockage partage
-- les photos restent invisibles jusqu'a `l'heure d'ouverture`
-- une fois l'heure atteinte, tous les participants peuvent consulter la galerie
-
-### Hypotheses structurantes
-
-- la capture se fait avec une `camera integree a l'app`, pas via l'appareil photo natif
-- les photos ne sont `pas enregistrees dans Photos / Galerie`
-- elles sont en revanche conservees temporairement dans le `sandbox prive de l'application` pour gerer l'upload, la reprise reseau et les erreurs
-- la souverainete vise uniquement les `fichiers photo`; les metadonnees applicatives peuvent etre hebergees ailleurs
-- la v1 ne repose pas sur du `chiffrement de bout en bout`
-- la v1 ne cherche pas a couvrir la video, l'edition, la moderation avancee ou la montee en charge industrielle
-
-> **Recommandation**
-> Conserver un scope v1 tres serre: capture photo HD, upload fiable, countdown, reveal, galerie.
-
-> **Pourquoi**
-> Toute extension prematuree sur la video, l'import galerie ou des comptes riches augmente fortement la complexite mobile et backend.
-
----
-
-## 3. Matrice des choix mobile
-
-### Echelle de notation
-
-Tous les scores ci-dessous vont de `1` a `5`, avec `5 = le plus favorable`.
-
-- `Cout`: moins couteux a construire et maintenir
-- `Rapidité`: plus rapide a mettre en place
-- `Complexite`: plus simple techniquement
-- `UX`: meilleur potentiel d'experience utilisateur
-- `Portabilite`: plus facile a faire evoluer ou migrer
-
-### Comparatif
-
-| Option | Cout | Rapidite | Complexite | UX | Portabilite | Camera HD / natif | CI mobile | Commentaire |
-| --- | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |
-| React Native bare | 4 | 5 | 4 | 4 | 4 | Tres bon avec bibliotheques natives | Moyenne | Meilleur compromis pour une v1 rapide avec besoin camera avance |
-| Flutter | 4 | 4 | 3 | 4 | 4 | Bon, mais integrer finement certaines briques natives peut prendre plus de temps | Moyenne | Solide, mais moins naturel si l'equipe pense deja en stack JS/backend web |
-| Natif iOS + Android | 1 | 1 | 1 | 5 | 3 | Excellent | Lourde | UX maximale, mais cout et delai disproportionnes pour une v1 a 12 personnes |
-
-### Lecture orientee decision
-
-| Critere important pour ce projet | React Native bare | Flutter | Natif |
+| Version | Objectif | Public | Infra typique |
 | --- | --- | --- | --- |
-| Aller vite a deux plateformes | Oui | Oui | Non |
-| Integrer une camera in-app serieuse | Oui | Oui | Oui |
-| Garder une seule base produit | Oui | Oui | Non |
-| Rester flexible si du natif est necessaire | Oui | Partiellement | Oui |
-| Limiter le cout d'une v1 ponctuelle | Oui | Oui | Non |
+| **V0** | Valider le coeur produit de bout en bout | Toi + 1–3 testeurs | VPS 20 Go, mono-evenement |
+| **V1** | Premiere vraie soiree | ~12 personnes | VPS ou migration partielle |
+| **V2** | Fiabiliser, distribuer, operer | Reutilisation multi-evenements | Infra durable + CI |
+| **V3** | Aboutissement projet | Usage ponctuel stabilise | Stack cible long terme |
 
-> **Recommandation**
-> Choisir `React Native bare + TypeScript`.
-
-> **Pourquoi**
-> Pour ce projet, le besoin cle n'est pas un simple formulaire mobile: c'est une `app camera`. `React Native bare` garde la souplesse du natif tout en restant rapide a livrer sur iOS et Android. C'est mieux aligne qu'une app Expo geree si l'on veut rester libre sur la partie build, camera et CI.
-
-> **Risques**
-> Il faut assumer des dossiers natifs iOS et Android, donc une CI plus proche d'un vrai projet mobile que d'une web app.
-
-> **Decision a reporter**
-> Le choix de la bibliotheque camera precise peut etre reporte apres ce cadrage, mais la direction `React Native bare` doit etre tranchee maintenant.
-
-### Position sur la camera
-
-Pour une app de ce type, la ligne directrice a retenir est:
-
-- `camera in-app`
-- `capture haute definition`
-- `pas d'enregistrement automatique dans la galerie`
-- `stockage temporaire en sandbox`
-
-Cela permet de garder le controle sur:
-
-- la qualite de capture
-- le moment de l'upload
-- la confidentialite avant reveal
-- la non-persistance dans la pellicule systeme
+```mermaid
+flowchart TD
+    Q[Questions Q1-Q12] --> V0[V0 - Coeur produit]
+    V0 --> V1[V1 - Soiree reelle]
+    V1 --> V2[V2 - Fiabilisation]
+    V2 --> V3[V3 - Aboutissement]
+```
 
 ---
 
-## 4. Matrice backend
+## 1. Invariants produit (non negociables)
 
-### Comparatif de haut niveau
+Ces points ne sont **pas remis en question** dans ce cadrage. Toute decision technique doit les respecter.
 
-| Option | Donnees souveraines | Donnees non souveraines | Cout d'entree | Effort de build | Lock-in | Portabilite | Observabilite | UX attendue | Verdict |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Supabase + stockage photo souverain | Photos | Auth, DB, sessions, metadonnees, fonctions | Moyen | Faible | Moyen | Moyen | Bonne | Tres bonne | Recommande |
-| Node/Fastify + Railway + stockage photo souverain | Photos | DB, sessions, metadonnees, logs | Faible a moyen | Moyen a eleve | Faible a moyen | Bonne | A construire | Bonne | Repli recommande |
-| Cloudflare Workers/D1 + stockage photo souverain | Photos | D1, sessions, logique API | Faible | Moyen | Moyen | Moyenne | Bonne | Bonne | Technique mais pas prioritaire |
-| Firebase + stockage photo souverain | Photos | Presque tout le reste | Faible | Faible | Fort | Faible | Tres bonne | Tres bonne | Rapide mais a eviter ici |
-
-### Comparatif note 1 a 5
-
-| Option | Cout | Rapidite | Complexite | Souverainete photos | UX | Portabilite | Commentaire |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| Supabase + Scaleway/OVH photos | 4 | 5 | 4 | 5 | 5 | 3 | Le plus pragmatique |
-| Node/Fastify + Railway + stockage photo souverain | 3 | 3 | 2 | 5 | 4 | 5 | Plus de controle, plus de code |
-| Cloudflare + stockage photo souverain | 4 | 3 | 3 | 5 | 4 | 3 | Bien si on veut plus serverless et plus custom |
-| Firebase + stockage photo souverain | 4 | 5 | 5 | 5 | 5 | 2 | Le plus rapide, mais lock-in fort |
-
-### Detail par option
-
-#### Option A - Supabase + stockage photo souverain
-
-- `Souverain`: originaux photo, thumbs, derives d'affichage sur `Scaleway` ou `OVHcloud`
-- `Non souverain`: base, auth, sessions, albums, memberships, eventuels logs sur `Supabase`
-- `Ordre de grandeur de cout`: environ `25 USD/mois` et plus selon usage pour un projet payant, plus le cout du stockage photo
-- `Niveau d'effort`: faible
-- `Points forts`: Postgres gere, auth, edge functions, dashboard, vitesse de mise en place
-- `Points faibles`: BaaS central, portabilite moyenne, metadonnees hors souverainete europeenne stricte
-
-#### Option B - Node/Fastify + Railway + stockage photo souverain
-
-- `Souverain`: originaux photo, thumbs, derives sur `Scaleway` ou `OVHcloud`
-- `Non souverain`: API, Postgres, secrets, logs sur `Railway`
-- `Ordre de grandeur de cout`: environ `5 a 30 USD/mois` selon abonnement et ressources, plus le stockage photo
-- `Niveau d'effort`: moyen a eleve
-- `Points forts`: meilleur controle, meilleure portabilite, backend plus classique
-- `Points faibles`: plus de code a ecrire, plus d'observabilite a assembler, time-to-market plus lent
-
-#### Option C - Cloudflare Workers/D1 + stockage photo souverain
-
-- `Souverain`: photos sur `Scaleway` ou `OVHcloud`
-- `Non souverain`: D1, logique serverless, logs et controle d'acces sur `Cloudflare`
-- `Ordre de grandeur de cout`: a partir d'environ `5 USD/mois` pour Workers Paid, puis usage
-- `Niveau d'effort`: moyen
-- `Points forts`: faible ops, faible cout initial, bon modele serverless
-- `Points faibles`: plus technique pour les workflows photo, plus de logique custom, persistance moins confortable qu'un vrai Postgres
-
-#### Option D - Firebase + stockage photo souverain
-
-- `Souverain`: photos si elles sont sorties de Firebase Storage vers un stockage europeen separe
-- `Non souverain`: auth, DB, fonctions, analytics, logs sur `Google`
-- `Ordre de grandeur de cout`: tres faible au depart, puis variable selon usage
-- `Niveau d'effort`: faible
-- `Points forts`: excellent DX mobile, auth et temps reel tres rapides a assembler
-- `Points faibles`: lock-in fort, peu aligne avec l'objectif de bien separer les photos du reste et de garder une architecture reversible
-
-> **Recommandation**
-> Choisir `Supabase + stockage photo souverain`.
-
-> **Pourquoi**
-> Le projet a besoin d'un backend `petit`, pas d'une plateforme backend a construire pendant des semaines. Supabase couvre vite la base, l'auth legere, les metadonnees et quelques endpoints. Le besoin de souverainete etant limite aux photos, le compromis est tres bon.
-
-> **Option de repli**
-> Si vous voulez reduire la dependance a un BaaS et accepter plus de travail backend, prendre `Node/Fastify + Railway + stockage photo souverain`.
-
-> **Risques**
-> Avec Supabase, la separation entre `fichiers photo souverains` et `metadonnees non souveraines` doit etre explicite et bien documentee.
-
----
-
-## 5. Matrice stockage photo souverain
-
-### Hypothese de choix
-
-Le stockage photo doit repondre a quatre besoins:
-
-- juridiction et hebergement europeens
-- compatibilite `S3`
-- prix simple
-- mise en oeuvre rapide avec une petite equipe
-
-### Comparatif
-
-| Option | Juridiction / image | Region utile | Compatibilite S3 | Stockage | Egress | Simplicite | Lifecycle rules | Derives image | Verdict |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Scaleway Object Storage Multi-AZ | Europeen, image forte de souverainete | Paris | Oui | `€0.0146/GB/mois` | `75 GB` inclus puis `€0.01/GB` | Tres bonne | Oui | A faire cote backend | Recommande |
-| OVHcloud Object Storage 3-AZ | Europeen, discours fort sur la souverainete | Europe | Oui | ~`$0.0158/GiB/mois` en 3-AZ | Inclus | Bonne | Oui | A faire cote backend | Tres credible |
-
-### Lecture orientee decision
-
-| Critere | Scaleway | OVHcloud |
-| --- | --- | --- |
-| Stockage photo souverain en Europe | Oui | Oui |
-| Integration simple avec backend web/mobile | Oui | Oui |
-| Prix lisible pour petite volumetrie | Oui | Oui |
-| Egress favorable si forte consultation | Correct | Tres favorable |
-| Simplicite pour une v1 a Paris | Tres bonne | Bonne |
-
-### Choix recommande
-
-> **Recommandation**
-> Choisir `Scaleway Object Storage Multi-AZ` en region `Paris` pour la v1.
-
-> **Pourquoi**
-> Le prix de stockage est competitif, `75 GB` d'egress mensuel sont inclus, l'integration S3 est simple, et la region `Paris` cadre bien avec un usage evenementiel local. Pour une premiere version a petite echelle, c'est l'option la plus simple a operer.
-
-> **Risques**
-> Si la consultation des photos ou les telechargements deviennent plus importants que prevu, `OVHcloud` peut devenir plus interessant grace a l'egress public inclus.
-
-> **Decision a reporter**
-> Le choix `Scaleway vs OVHcloud` peut encore etre affinee au moment d'estimer le vrai volume photo et le comportement de consultation apres reveal.
-
-### Position sur les derives image
-
-Dans les deux cas:
-
-- stocker l'`original`
-- generer un `thumbnail`
-- generer une version `display`
-- garder le bucket prive
-- n'exposer que des `URLs signees`
-
-Le service de stockage ne remplace pas la logique applicative de reveal. Celle-ci reste du cote backend.
-
----
-
-## 6. Distribution iPhone
-
-### Ce qu'il faut comprendre tout de suite
-
-Le point dur n'est pas de `coder` l'app iOS. Le point dur est de la `distribuer proprement` a environ `12 iPhones`.
-
-### Comparatif
-
-| Option | Faisable sans abonnement | Confort de distribution | Adaptation a 12 iPhones | Delai | Commentaire |
-| --- | --- | --- | --- | --- | --- |
-| Xcode local + Personal Team | Oui, pour developper et tester sur appareil | Faible | Faible | Court | Bien pour developper maintenant, pas pour une vraie diffusion fluide |
-| Apple Developer Program + TestFlight | Non | Excellent | Excellent | Moyen | Meilleure option de beta privee |
-| Apple Developer Program + Ad Hoc | Non | Moyen | Bon si parc controle | Moyen | Correct pour un groupe ferme, plus operationnel que TestFlight |
-
-### Ce qui est faisable maintenant
-
-- `Oui`: developper sur le `Mac local`, lancer l'app depuis `Xcode`, tester sur des appareils relies et appaires
-- `Non, de facon realiste`: organiser facilement une distribution propre a `12 iPhones` sans rejoindre le `Apple Developer Program`
-
-### Lecture orientee decision
-
-| Question | Reponse |
+| Invariant | Description |
 | --- | --- |
-| Peut-on repousser la decision Apple payante ? | Oui, pour le cadrage et le prototype |
-| Peut-on developper sans abonnement payant ? | Oui |
-| Peut-on faire un vrai test multi-appareils confortable sans abonnement ? | Pas de facon realiste |
-| Quelle option viser des que l'on veut tester en conditions reelles ? | `TestFlight` |
+| Camera in-app | Les photos sont prises dans l'application, pas via l'appareil photo natif |
+| Capture HD | Resolution elevee (12 MP+ ou equivalent appareil), JPEG qualite ~85–90 % |
+| Pas de fuite galerie | Aucun enregistrement automatique dans Photos / Galerie systeme |
+| Sandbox temporaire | Fichier local jusqu'a upload confirme, puis suppression |
+| Reveal a heure fixe | Photos invisibles avant `revealAt`, galerie accessible apres |
+| Upload fiable | Retry et reprise reseau obligatoires (fichiers lourds, reseau soiree) |
+| Scope exclu | Pas de video, pas d'import galerie, pas de E2E, pas de moderation avancee |
 
-> **Recommandation**
-> Reporter la decision `Apple Developer Program` pendant la phase de cadrage, mais prevoir `TestFlight` comme voie cible des que l'on veut un test reel sur `12 iPhones`.
-
-> **Pourquoi**
-> Cela evite de payer trop tot, tout en reconnaissant que `Xcode + Personal Team` ne regle pas le probleme de distribution d'un petit groupe d'utilisateurs.
-
-> **Risques**
-> Si cette decision est repousse trop tard, le planning du premier test terrain bascule d'un sujet produit vers un sujet administratif et de distribution.
-
-> **Decision a reporter**
-> `Quand payer Apple` peut etre decide plus tard. `Que fera-t-on pour distribuer aux iPhones` ne peut pas rester flou.
+> **Decision deja prise**
+> La qualite HD in-app est un pilier produit. Les raccourcis se font ailleurs (infra, auth, CI, derivees image).
 
 ---
 
-## 7. CI/CD et builds
+## 2. Contexte et ressources disponibles
 
-### Cible recommandee
+| Ressource | Detail |
+| --- | --- |
+| VPS | 20 Go disque, a confirmer : hebergeur, region, RAM, CPU |
+| Mac local | Developpement et builds iOS |
+| GitHub | Depot code accepte |
+| GitHub Actions | Accepte (niveau d'automatisation a decider) |
+| Cible usage | Application ponctuelle, non commercialisee, ~12 personnes |
+| Souverainete | Limitee aux **fichiers photo** ; metadonnees peuvent etre ailleurs |
 
-- `GitHub` pour le code
-- `GitHub Actions` pour lint, tests, checks backend et builds Android
-- `Mac local` pour les builds iOS au debut
-- option `self-hosted runner` GitHub Actions sur ce Mac si l'automatisation iOS devient utile
+### Budget disque (ordre de grandeur — decisions Q2 + Q7)
 
-### Pourquoi cette cible
+Hypothese retenue : 12 personnes, **>50 photos/personne** (plafond API **100**), JPEG HD ~4 Mo.
 
-| Sujet | Choix | Raison |
+| Poste | Estimation |
+| --- | --- |
+| OS + Docker + Postgres + MinIO | ~3 Go |
+| Photos brutes (12 × 100 × 4 Mo) | ~4,8 Go |
+| Marge + logs | ~2 Go |
+| **Total pire cas V1** | **~10 Go** — compatible VPS 20 Go pour un mono-evenement |
+
+---
+
+## 3. Parcours de decision — questions successives
+
+Repondre dans l'ordre. Chaque question indique ce qu'elle debloque.
+
+---
+
+### Q1 — Quel est l'objectif de la premiere livraison ?
+
+**Contexte** : La V0 sert a prouver le flux complet. La V1 sert a tenir une vraie soiree.
+
+| Option | Description | Delai indicatif |
 | --- | --- | --- |
-| Depot git | GitHub | Standard, simple, connu |
-| CI generale | GitHub Actions | Suffisant pour ce projet, pas besoin de sur-ingenierie |
-| Builds Android | GitHub-hosted runner | Facile a automatiser |
-| Builds iOS au debut | Mac local | Evite de concevoir trop tot une infra iOS |
-| Builds iOS plus tard | Self-hosted runner sur le Mac | Permet d'automatiser sans changer de machine |
+| **A — V0 d'abord** | Valider capture HD → upload → countdown → reveal → galerie avec 1–3 testeurs | 2–4 semaines |
+| **B — V1 directement** | Viser la soiree a 12 personnes sans phase intermediaire | 4–8 semaines |
 
-### Limites volontaires
+**Recommandation** : **A — V0 d'abord**. Le VPS 20 Go et l'absence de CI au depart rendent une phase de validation interne indispensable.
 
-- ne pas commencer par une usine a gaz CI/CD
-- ne pas industrialiser iOS avant d'avoir valide la voie de distribution Apple
-- garder les secrets simples et peu nombreux
+**Debloque** : le niveau d'exigence des etapes V0.1 a V0.4.
 
-> **Recommandation**
-> Demarrer avec `GitHub Actions + Mac local`, puis ajouter un `self-hosted runner` seulement si les builds iOS deviennent repetitifs.
+**Ta decision**
 
-> **Pourquoi**
-> La CI doit accelerer la livraison, pas devenir un projet a part. Pour une v1 ponctuelle, l'automatisation totale iOS n'est pas une priorite.
-
-> **Risques**
-> Sans discipline de scripts communs, les builds locaux peuvent diverger des checks executes dans GitHub Actions.
+| Champ | Valeur |
+| --- | --- |
+| Choix | [x] A — V0 d'abord &nbsp;&nbsp; [ ] B — V1 directement |
+| Date cible premiere livraison | A definir |
+| Notes | Valider le flux complet avant la soiree reelle |
 
 ---
 
-## 8. Hebergement backend selon l'option retenue
+### Q2 — Combien de participants pour la premiere soiree reelle (V1) ?
 
-### Architecture recommandee
+**Contexte** : Dimensionne stockage, bande passante et distribution mobile.
+
+| Option | Impact |
+| --- | --- |
+| **A — ~12 personnes** | Hypothese initiale du projet |
+| **B — Moins (6–8)** | Plus de marge disque/reseau, distribution iOS plus simple |
+| **C — Plus (15–20)** | Revoir budget disque VPS ou migrer stockage avant V1 |
+
+**Recommandation** : **A — ~12 personnes**, avec plafond soft de 50 photos/personne.
+
+**Debloque** : Q8 (stockage), Q10 (Apple), estimations disque.
+
+**Ta decision**
+
+| Champ | Valeur |
+| --- | --- |
+| Choix | [x] A — ~12 personnes &nbsp;&nbsp; [ ] B &nbsp;&nbsp; [ ] C |
+| Plafond photos/personne | [x] >50 — plafond API fixe a **100** |
+| Notes | Attendre plus de 50 photos/personne ; surveiller disque VPS |
+
+---
+
+### Q3 — Quelle plateforme mobile en premier ?
+
+**Contexte** : iOS et Android n'ont pas la meme friction de distribution. La camera HD fonctionne sur les deux, mais le chemin de test differe.
+
+| Option | Avantages | Inconvenients |
+| --- | --- | --- |
+| **A — Android d'abord** | APK sideload facile, pas de compte Apple | Ne couvre pas les iPhones des invites |
+| **B — iOS d'abord** | Valide tot tot le sujet camera + distribution Apple | Distribution limitee sans Developer Program |
+| **C — Les deux des V0** | Couverture maximale | Double effort build/test des le depart |
+
+**Recommandation** : **A — Android d'abord** pour V0, puis iOS des V0.4 ou V1 selon parc iPhone des invites.
+
+**Debloque** : ordre des etapes mobile, moment de Q10.
+
+**Ta decision**
+
+| Champ | Valeur |
+| --- | --- |
+| Choix V0 | [ ] A &nbsp;&nbsp; [ ] B &nbsp;&nbsp; [x] C — Les deux (Android + iOS) |
+| Choix V1 (soiree reelle) | [x] Android + iOS &nbsp;&nbsp; [ ] Android seul &nbsp;&nbsp; [ ] Autre |
+| Notes | Double effort build/test des V0 ; Mac local requis pour iOS |
+
+---
+
+### Q4 — Stack mobile
+
+**Contexte** : Le besoin cle est une app camera HD, pas un formulaire mobile.
+
+| Option | Camera HD | Delai V0 | CI | Verdict |
+| --- | --- | --- | --- | --- |
+| **A — React Native bare + TypeScript** | Tres bon (`react-native-vision-camera`) | Moyen | Flexible | **Recommande** |
+| **B — Expo (dev build) + TypeScript** | Bon (`expo-camera`) | Rapide | Plus contraint | Acceptable si equipe prefere Expo |
+| **C — Flutter** | Bon | Moyen | Moyen | Si equipe Dart |
+| **D — Natif iOS + Android** | Excellent | Long | Lourd | A ecarter pour ce projet |
+
+**Recommandation** : **A — React Native bare + TypeScript** avec `react-native-vision-camera`.
+
+**Debloque** : setup projet mobile, choix bibliotheque camera (Q5).
+
+**Ta decision**
+
+| Champ | Valeur |
+| --- | --- |
+| Choix | [ ] A &nbsp;&nbsp; [x] B — Expo dev build + TypeScript &nbsp;&nbsp; [ ] C &nbsp;&nbsp; [ ] D |
+| Bibliotheque camera | [ ] react-native-vision-camera &nbsp;&nbsp; [x] expo-camera &nbsp;&nbsp; [ ] Autre |
+| Notes | Dev build requis (pas Expo Go) pour camera HD en production |
+
+---
+
+### Q5 — Spec technique HD (a figer avant le dev mobile)
+
+**Contexte** : "HD" doit etre defini precisement pour eviter les ecarts a l'implementation.
+
+| Parametre | Recommandation V0 | Recommandation V1+ |
+| --- | --- | --- |
+| Resolution capture | Max supportee par l'appareil | Idem |
+| Format | JPEG | JPEG |
+| Qualite compression | 85–90 % | 85–90 % |
+| Taille fichier cible | 3–6 Mo/photo | 3–6 Mo/photo |
+| Orientation / EXIF | Conserver | Conserver |
+
+**Recommandation** : Adopter le tableau tel quel. Pas de downscale avant upload.
+
+**Debloque** : implementation camera, tests qualite image.
+
+**Ta decision**
+
+| Champ | Valeur |
+| --- | --- |
+| Qualite JPEG | [ ] 85 % &nbsp;&nbsp; [x] 90 % (defaut retenu) &nbsp;&nbsp; [ ] 100 % |
+| Downscale avant upload | [x] Non &nbsp;&nbsp; [ ] Oui |
+| Notes | Resolution max appareil, pas de reduction avant upload |
+
+---
+
+### Q6 — Architecture backend V0
+
+**Contexte** : Un VPS 20 Go est disponible. Trois architectures possibles.
+
+| Option | Description | Cout/mois | Effort | Verdict V0 |
+| --- | --- | --- | --- | --- |
+| **A — Tout sur VPS** | Fastify + Postgres + MinIO (ou disque) sur le VPS | VPS deja paye | Moyen | **Recommande V0** |
+| **B — Supabase + Scaleway** | BaaS + stockage objet separe | ~30–40 USD + stockage | Faible | Recommande V1+ si migration |
+| **C — Hybride** | API sur VPS, photos sur Scaleway des V0 | VPS + ~5 USD stockage | Moyen | Si souverainete photo stricte des V0 |
+
+**Recommandation** : **A — Tout sur VPS** pour V0. Migration vers B ou C en V2 si besoin.
+
+**Architecture V0 recommandee**
 
 ```mermaid
 flowchart LR
-    A[App iOS / Android] --> B[Backend minimal]
-    B --> C[Metadonnees / sessions]
-    B --> D[Stockage photo souverain]
-    D --> E[Originaux]
-    D --> F[Thumbs / Display]
-    B --> G[Reveal gate]
-    G --> H[Galerie accessible apres revealAt]
+    A[App mobile] --> B[VPS 20 Go]
+    B --> C[Fastify API]
+    B --> D[Postgres]
+    B --> E[MinIO ou /data/photos]
+    C --> F[Reveal gate]
+    F --> G[Galerie apres revealAt]
 ```
 
-### Option recommandee - Supabase + stockage photo souverain
+**Debloque** : setup infra, modele de donnees, flux upload.
 
-| Brique | Choix | Commentaire |
-| --- | --- | --- |
-| API legere / logique | Supabase Edge Functions | Suffisant pour reveal, signed URLs, operations simples |
-| Base | Supabase Postgres | Albums, memberships, assets, horodatage d'ouverture |
-| Auth legere | Supabase Auth ou session custom simple | A limiter a un besoin minimal |
-| Photos | Scaleway Object Storage | Bucket prive, origine des photos souveraine |
-| Secrets | Secrets Supabase + GitHub Secrets | Suffisant pour la v1 |
-| Logs | Dashboard Supabase + logs GitHub | Minimal mais acceptable |
-| Monitoring | Basique au depart | Erreurs upload, erreurs reveal, latence |
-| Sauvegardes | Celles du service choisi pour la DB + versioning objet si utile | A garder simple |
-| Cout mensuel estimatif | `~25 a 40 USD` hors gros usage + stockage photo | Ordre de grandeur, pas devis ferme |
+**Ta decision**
 
-### Option de repli - Node/Fastify + Railway + stockage photo souverain
-
-| Brique | Choix | Commentaire |
-| --- | --- | --- |
-| API | Fastify sur Railway | Plus classique, plus controlable |
-| Base | Postgres Railway | Simple, mais non souverain |
-| Photos | Scaleway Object Storage | Bucket prive |
-| Secrets | Railway + GitHub Secrets | Classique |
-| Logs | Railway logs + outil externe si besoin | A completer |
-| Monitoring | A monter soi-meme | Plus de travail |
-| Sauvegardes | Via DB geree + stockage objet | A documenter |
-| Cout mensuel estimatif | `~10 a 30 USD` + stockage photo | Variable selon ressources |
-
-### Option serverless plus technique - Cloudflare + stockage photo souverain
-
-| Brique | Choix | Commentaire |
-| --- | --- | --- |
-| API | Workers | Leger, peu d'ops |
-| Base | D1 | Suffisant pour du simple, moins confortable que Postgres |
-| Photos | Scaleway Object Storage | Bucket prive |
-| Secrets | Cloudflare secrets + GitHub Secrets | Classique |
-| Logs | Cloudflare dashboard | Correct |
-| Monitoring | Bon pour petite charge | Mais logique plus custom |
-| Cout mensuel estimatif | `~5 a 15 USD` + stockage photo | Economique |
-
-### Angle de gouvernance
-
-La separation a formaliser est la suivante:
-
-- `Photos`: souveraines, stockage europeen dedie
-- `Metadonnees`: non souveraines accepte
-- `Code`: GitHub accepte
-- `CI`: GitHub Actions accepte
-
-Cette separation doit etre explicitement ecrite dans la documentation projet pour eviter toute ambiguite plus tard.
+| Champ | Valeur |
+| --- | --- |
+| Choix V0 | [x] A — Tout VPS &nbsp;&nbsp; [ ] B &nbsp;&nbsp; [ ] C |
+| Choix cible V2+ | [x] Garder VPS (reévaluer si 2e evenement ou disque >60 %) &nbsp;&nbsp; [ ] Migrer Scaleway |
+| Hbergeur / region VPS | A confirmer (region EU recommandee) |
+| Notes | Fastify + Postgres + MinIO sur VPS 20 Go |
 
 ---
 
-## 9. Decisions a prendre
+### Q7 — Stockage photos V0
 
-| Decision | Quand la prendre | Impact si reportee |
-| --- | --- | --- |
-| Stack mobile (`React Native bare` ou autre) | Maintenant | Bloque tout le cadrage technique mobile |
-| Backend principal (`Supabase` ou repli) | Maintenant | Bloque la maniere de penser auth, data model et uploads |
-| Stockage photo souverain (`Scaleway` ou `OVHcloud`) | Maintenant ou tres vite | Bloque les flux upload et les regles de securite photo |
-| Methode iOS finale (`TestFlight` ou autre) | Avant le premier test reel multi-appareils | Bloque la diffusion a 12 iPhones |
-| Niveau d'automatisation CI iOS | Plus tard | Peu bloquant au debut |
-| Precision des roles utilisateur | Plus tard | Faible impact sur le cadrage initial |
-| Optimisation cout / observabilite | Plus tard | Faible impact sur une v1 ponctuelle |
+**Contexte** : Les photos HD sont le poste disque principal. Le VPS a 20 Go.
 
-### Ce qu'il faut choisir maintenant
+| Option | Description | Souverainete EU | Simplicite V0 |
+| --- | --- | --- | --- |
+| **A — MinIO sur VPS** | Object storage S3-compatible local | Oui si VPS en EU | Tres bonne |
+| **B — Dossier disque + API** | Fichiers dans `/data/photos`, servis via API | Oui si VPS en EU | Maximale |
+| **C — Scaleway Object Storage** | Bucket S3 Paris des V0 | Oui | Moyenne (config externe) |
 
-1. `React Native bare + TypeScript`
-2. `Supabase` comme backend minimal
-3. `Scaleway Object Storage Multi-AZ Paris` pour les photos
-4. `GitHub + GitHub Actions`
-5. `Xcode local` tant que le sujet distribution iPhone n'est pas tranche
+**Recommandation V0** : **A — MinIO** (facilite migration S3 vers Scaleway en V2). **B** acceptable si tu veux zero dependance MinIO.
 
-### Ce qu'on peut differer sans bloquer la suite
+**Regles communes** (toutes options)
 
-1. date de souscription au `Apple Developer Program`
-2. automatisation iOS via `self-hosted runner`
-3. arbitrage fin `Scaleway vs OVHcloud` si les volumes egress changent fortement
-4. eventuelle migration future de `Supabase` vers un backend Node plus portable
+- Bucket / repertoire **prive**
+- Acces via **URLs signees** uniquement
+- Pas d'URL publique directe
+
+**Debloque** : implementation upload, signed URLs, purge post-evenement.
+
+**Ta decision**
+
+| Champ | Valeur |
+| --- | --- |
+| Choix V0 | [x] A — MinIO &nbsp;&nbsp; [ ] B &nbsp;&nbsp; [ ] C |
+| Choix cible V2+ | [x] MinIO/VPS &nbsp;&nbsp; [ ] Scaleway &nbsp;&nbsp; [ ] OVHcloud |
+| Politique purge post-evenement | [x] Manuelle &nbsp;&nbsp; [ ] Auto |
+| Notes | Bucket prive, URLs signees |
 
 ---
 
-## Conclusion
+### Q8 — Derivees image
 
-La direction la plus robuste pour demarrer est:
+**Contexte** : Le doc initial prevoit original + thumbnail + display. Chaque derivee multiplie stockage et code.
 
-- `React Native bare + TypeScript`
-- `Supabase` pour les metadonnees et la logique applicative minimale
-- `Scaleway Object Storage` pour toutes les photos
-- `GitHub + GitHub Actions`
-- `Xcode local` au debut, puis `TestFlight` des que le test iPhone reel devient prioritaire
+| Option | Stockage | UX galerie | Effort |
+| --- | --- | --- | --- |
+| **A — Original HD seul** | Minimal | Grille lente si 200+ photos | Minimal |
+| **B — Original + thumbnail leger** | +~5 % | Grille fluide, tap = HD | Faible |
+| **C — Original + thumb + display** | +~30–50 % | Optimal | Eleve |
 
-Ce choix respecte le point essentiel demande: `les photos restent sur une infrastructure europeenne dediee`, tandis que le reste de la stack reste pragmatique, rapide a mettre en place et reversible a moyen terme.
+**Recommandation** : **B — Original + thumbnail** des V0.4. En V0.1–V0.3, **A** suffit pour valider le flux.
+
+**Debloque** : jobs de generation image cote backend.
+
+**Ta decision**
+
+| Champ | Valeur |
+| --- | --- |
+| V0 (validation flux) | [x] A — Original HD seul &nbsp;&nbsp; [ ] B |
+| V1 (soiree reelle) | [x] A — Original HD seul &nbsp;&nbsp; [ ] B &nbsp;&nbsp; [ ] C |
+| Taille thumbnail | N/A |
+| Notes | Galerie charge les originaux ; perf a surveiller si 600+ photos |
+
+---
+
+### Q9 — Authentification et acces album
+
+**Contexte** : Pour 12 personnes ponctuelles, l'auth peut rester minimale.
+
+| Option | Description | Effort | Verdict |
+| --- | --- | --- | --- |
+| **A — Code album + pseudo** | L'organisateur cree l'album, partage un code, l'invite choisit un pseudo | Minimal | **Recommande V0–V1** |
+| **B — Code + PIN par invite** | Controle d'acces renforce | Faible | Si inquietude sur le code partage |
+| **C — Comptes email/mot de passe** | Auth classique | Eleve | Reporter V2+ |
+
+**Recommandation** : **A** pour V0 et V1.
+
+**Debloque** : modele `albums`, `memberships`, endpoints join.
+
+**Ta decision**
+
+| Champ | Valeur |
+| --- | --- |
+| Choix V0/V1 | [x] A — Code album + pseudo &nbsp;&nbsp; [ ] B &nbsp;&nbsp; [ ] C |
+| Longueur code album | [x] 6 caracteres (defaut retenu) &nbsp;&nbsp; [ ] 8 |
+| Notes | Pas de compte utilisateur |
+
+---
+
+### Q10 — Distribution iPhone (Apple Developer Program)
+
+**Contexte** : Le point dur iOS n'est pas le code, c'est la **distribution a ~12 iPhones**.
+
+| Option | Sans abonnement 99 EUR/an | Confort 12 iPhones | Quand |
+| --- | --- | --- | --- |
+| **A — Xcode + Personal Team** | Oui (dev + 1–2 appareils) | Faible | V0 uniquement |
+| **B — Developer Program + TestFlight** | Non | Excellent | **Avant V1 si parc iPhone** |
+| **C — Developer Program + Ad Hoc** | Non | Bon (parc controle) | Alternative a TestFlight |
+
+**Recommandation** : **A** pendant V0. **B (TestFlight)** obligatoire avant V1 si des iPhones participent a la soiree.
+
+**Debloque** : date d'inscription Apple, planning V1.
+
+**Ta decision**
+
+| Champ | Valeur |
+| --- | --- |
+| Methode V0 | [x] A — Xcode local (Personal Team) |
+| Methode V1 | [x] A — Xcode local (meme choix) — **voir alerte ci-dessous** |
+| Date inscription Apple (si B ou C) | Non prevue pour l'instant |
+| Notes | Limite : ~1–2 iPhones par build sans Developer Program |
+
+> **Alerte Q10 — A trancher avant V1**
+> Avec **~12 iPhones** et **Xcode seul**, la distribution confortable n'est **pas realiste**. Options avant la soiree :
+> 1. Souscrire au **Apple Developer Program** + **TestFlight** (recommande)
+> 2. Installer manuellement sur chaque iPhone via Xcode (lourd, appareils physiques requis)
+> 3. Reduire le parc iPhone a la V1
+>
+> Decision V1 iOS a prendre en fin de V0.4.
+
+---
+
+### Q11 — CI/CD et qualite code
+
+**Contexte** : La CI accelere la livraison mais peut devenir un projet a part.
+
+| Niveau | Contenu | Quand |
+| --- | --- | --- |
+| **0 — Aucune CI** | Builds locaux uniquement | **V0** (recommande) |
+| **1 — CI backend** | Lint + tests API sur GitHub Actions | V0.4 ou V1 |
+| **2 — CI backend + Android** | + build APK/AAB automatique | V1 |
+| **3 — CI complete** | + self-hosted runner iOS sur Mac | V2 |
+
+**Recommandation** : Niveau **0** en V0, niveau **1–2** en V1, niveau **3** seulement si builds iOS repetitifs.
+
+**Debloque** : setup GitHub Actions, scripts de build.
+
+**Ta decision**
+
+| Champ | Valeur |
+| --- | --- |
+| Niveau V0 | [x] 0 — Aucune CI &nbsp;&nbsp; [ ] 1 |
+| Niveau V1 | [x] 0 — Aucune CI &nbsp;&nbsp; [ ] 1 &nbsp;&nbsp; [ ] 2 |
+| Niveau V2 | [ ] 2 &nbsp;&nbsp; [ ] 3 — a trancher en V2 |
+| Notes | Builds locaux (Mac + Android Studio) |
+
+---
+
+### Q12 — Sauvegardes et reprise (V1 minimum)
+
+**Contexte** : Un VPS mono-noeud sans backup = risque de perte totale des photos de la soiree.
+
+| Option | Description | Quand |
+| --- | --- | --- |
+| **A — Snapshot VPS hebergeur** | Backup disque complet | Avant V1 (minimum) |
+| **B — Export Postgres + sync photos** | Dump SQL + rsync vers stockage externe | V1 |
+| **C — Pas de backup V0** | Acceptable pour tests internes | V0 seulement |
+
+**Recommandation** : **C** acceptable en V0. **A + B** obligatoires avant V1.
+
+**Debloque** : runbook operationnel, checklist pre-soiree.
+
+**Ta decision**
+
+| Champ | Valeur |
+| --- | --- |
+| V0 | [x] C — Pas de backup |
+| V1 | [x] Pas de backup (choix explicite) — **risque accepte** |
+| Notes | Revoir avant V1 si les photos de la soiree doivent etre protegees |
+
+---
+
+## 4. Synthese des decisions — registre global
+
+Decisions validees le **2026-06-02**.
+
+| # | Decision | Choix retenu | Date |
+| --- | --- | --- | --- |
+| Q1 | Premiere livraison | V0 d'abord — valider le flux | 2026-06-02 |
+| Q2 | Participants V1 | ~12 personnes, >50 photos/pers. (plafond API 100) | 2026-06-02 |
+| Q3 | Plateforme(s) | V0: Android + iOS / V1: Android + iOS | 2026-06-02 |
+| Q4 | Stack mobile | Expo dev build + TypeScript + expo-camera | 2026-06-02 |
+| Q5 | Spec HD | JPEG 90 %, pas de downscale, resolution max appareil | 2026-06-02 |
+| Q6 | Backend V0 / cible V2 | Tout sur VPS / Garder VPS en V2+ (reévaluer) | 2026-06-02 |
+| Q7 | Stockage photos | MinIO sur VPS / purge manuelle | 2026-06-02 |
+| Q8 | Derivees image | Original HD seul (V0 et V1) | 2026-06-02 |
+| Q9 | Auth | Code album 6 car. + pseudo | 2026-06-02 |
+| Q10 | Distribution iOS | Xcode local (V0 et V1 provisoire — alerte 12 iPhones) | 2026-06-02 |
+| Q11 | CI/CD | Niveau 0 (V0 et V1), V2 a trancher | 2026-06-02 |
+| Q12 | Sauvegardes | Pas de backup (V0 et V1) | 2026-06-02 |
+
+### Stack retenue (apres decisions)
+
+| Brique | V0 | V1 | V2+ |
+| --- | --- | --- | --- |
+| Mobile | Expo dev build + expo-camera | Idem | Idem + CI optionnelle |
+| Backend | Fastify sur VPS | Idem | + rate limiting, CI |
+| Base | Postgres (Docker) | Idem | Idem |
+| Photos | MinIO (bucket prive, URLs signees) | Idem | Migration Scaleway si besoin |
+| Auth | Code album + pseudo | Idem | Idem |
+| CI | Aucune | Aucune | A trancher |
+| iOS distribution | Xcode local | Xcode (TestFlight a decider) | TestFlight recommande |
+
+### Points ouverts (a trancher en fin de V0)
+
+| Sujet | Urgence | Recommandation |
+| --- | --- | --- |
+| Distribution 12 iPhones (Q10) | Avant V1 | TestFlight + Apple Developer Program |
+| Sauvegardes soiree (Q12) | Avant V1 | Snapshot VPS minimum malgre choix initial |
+| Hbergeur / region VPS | Avant V0.1 | Region EU |
+| Thumbnails galerie (Q8) | Apres V1 si perf degradee | Original + thumb 400 px |
+
+---
+
+## 5. Architecture cible par phase
+
+### V0 — Tout sur VPS (recommandation par defaut)
+
+```mermaid
+flowchart TD
+    subgraph mobile [App mobile]
+        M1[Camera HD in-app]
+        M2[Sandbox temporaire]
+        M3[Upload + retry]
+    end
+    subgraph vps [VPS 20 Go - EU]
+        API[Fastify API]
+        DB[(Postgres)]
+        S3[MinIO / disque]
+        RG[Reveal gate]
+    end
+    M1 --> M2 --> M3 --> API
+    API --> DB
+    API --> S3
+    API --> RG
+```
+
+### V2+ — Migration optionnelle
+
+```mermaid
+flowchart TD
+    App[App iOS / Android] --> API[Backend]
+    API --> DB[(Postgres)]
+    API --> OBJ[Scaleway / OVHcloud Object Storage]
+    API --> RG[Reveal gate]
+```
+
+La migration V0 → V2 se fait sans changer le contrat mobile si l'API REST reste stable et que MinIO/Scaleway restent S3-compatibles.
+
+---
+
+## 6. Plan detaille par version
+
+### Legende
+
+- **Livrable** : ce qui existe a la fin de l'etape
+- **Critere de sortie** : condition pour passer a l'etape suivante
+- **Duree** : estimation solo dev, a ajuster
+
+---
+
+### V0 — Valider le coeur produit
+
+Objectif : prouver **capture HD → upload → countdown → reveal → galerie** sur **Android et iOS** avec 1–3 testeurs.
+
+#### V0.1 — Fondations infra et API (3–5 jours)
+
+| # | Tache | Detail |
+| --- | --- | --- |
+| 1 | Provisionner VPS | OS, firewall, utilisateur deploy, region EU |
+| 2 | Docker Compose | Postgres, MinIO (ou volume photos), API Fastify |
+| 3 | Modele de donnees | `albums`, `members`, `photos`, `reveal_at` |
+| 4 | Endpoints CRUD album | Creer album, rejoindre par code, definir `reveal_at` |
+| 5 | HTTPS | Reverse proxy (Caddy ou Nginx + Let's Encrypt) |
+
+**Livrables** : API deployee, swagger ou collection HTTP, album creatable via API.
+
+**Criteres de sortie**
+
+- [ ] `POST /albums` cree un album avec code unique
+- [ ] `POST /albums/:code/join` ajoute un membre avec pseudo
+- [ ] `reveal_at` modifiable par l'organisateur
+- [ ] HTTPS fonctionnel
+
+---
+
+#### V0.2 — Upload photo et reveal gate (3–5 jours)
+
+| # | Tache | Detail |
+| --- | --- | --- |
+| 1 | Upload multipart | `POST /albums/:id/photos`, JPEG HD, max size configurable |
+| 2 | Stockage prive | Ecriture MinIO/disque, cle objet par album |
+| 3 | Reveal gate | Endpoints photos retournent 403 avant `reveal_at` |
+| 4 | URLs signees | Generation URLs temporaires apres reveal |
+| 5 | Quota | Plafond **100 photos/membre** (cf. Q2) |
+
+**Livrables** : upload curl/Postman fonctionnel, photos inaccessibles avant reveal.
+
+**Criteres de sortie**
+
+- [ ] Upload JPEG 5 Mo OK
+- [ ] Avant `reveal_at` : liste photos vide ou 403
+- [ ] Apres `reveal_at` : URLs signees valides
+- [ ] Quota enforce cote API
+
+---
+
+#### V0.3 — App mobile : camera et upload (6–10 jours)
+
+| # | Tache | Detail |
+| --- | --- | --- |
+| 1 | Init projet Expo | Dev build (`expo prebuild`), TypeScript |
+| 2 | Ecran join | Saisie code album + pseudo |
+| 3 | Camera HD | `expo-camera`, resolution max, JPEG 90 %, spec Q5 |
+| 4 | Sandbox | Fichier temporaire, pas de save galerie (`MediaLibrary` desactive) |
+| 5 | Upload + retry | Queue locale, retry exponential backoff |
+| 6 | UI countdown | Afficher temps restant avant reveal |
+| 7 | Builds plateformes | APK Android + build iOS via Xcode (Personal Team) |
+
+**Livrables** : APK Android + build iOS installables, flux join → capture → upload.
+
+**Criteres de sortie**
+
+- [ ] Photo capturee en HD sur Android **et** iOS (verifier metadonnees taille/resolution)
+- [ ] Photo absente de la galerie systeme
+- [ ] Upload reussit sur reseau 4G/WiFi
+- [ ] Retry automatique apres coupure reseau
+- [ ] Countdown visible et correct
+
+---
+
+#### V0.4 — Galerie et test bout en bout (3–5 jours)
+
+| # | Tache | Detail |
+| --- | --- | --- |
+| 1 | Ecran galerie | Grille photos (originaux HD), etat "verrouille" avant reveal |
+| 2 | Reveal automatique | Rafraichissement a `reveal_at` (poll simple) |
+| 3 | Test multi-appareils | 2–3 telephones **Android + iOS**, 1 album, 1 reveal |
+| 4 | Purge test | Script suppression album + photos |
+| 5 | Go/no-go V1 | Trancher Q10 (TestFlight?) et Q12 (backup?) |
+
+**Livrables** : demo complete filmable, runbook test interne.
+
+**Criteres de sortie**
+
+- [ ] 2+ appareils (Android **et** iOS) dans le meme album
+- [ ] Photos visibles simultanement apres reveal
+- [ ] Qualite HD confirmee visuellement
+- [ ] Purge remet le disque a un etat propre
+
+**Fin V0** : le coeur produit est valide. Decision go/no-go pour V1.
+
+---
+
+### V1 — Premiere vraie soiree (~12 personnes)
+
+Objectif : tenir une soiree reelle sans perte de photos ni blocage distribution.
+
+#### V1.1 — Preparer la soiree (3–5 jours)
+
+| # | Tache | Detail |
+| --- | --- | --- |
+| 1 | iOS build | Xcode local — **decider TestFlight avant Jour J si 12 iPhones** |
+| 2 | Android APK | Build release signe (`eas build` local ou Gradle), distribution fichier |
+| 3 | Monitoring minimal | Logs API, alerte disque > 80 % (pas de backup — risque accepte) |
+| 4 | Runbook soiree | Doc : creer album, distribuer app, heure reveal, que faire si panne |
+| 5 | Test charge leger | 12 uploads simultanes simules, ~100 photos/personne en estimation |
+
+**Criteres de sortie**
+
+- [ ] App installable sur tous les appareils cibles (Android APK + iOS via Xcode ou TestFlight)
+- [ ] Runbook relu
+- [ ] Espace disque > 8 Go libre (budget ~10 Go pire cas)
+- [ ] Decision Q10 iOS tranchee pour les 12 iPhones
+
+---
+
+#### V1.2 — Soiree (Jour J)
+
+| # | Tache | Detail |
+| --- | --- | --- |
+| 1 | Creer album | Organisateur definit `reveal_at` |
+| 2 | Distribuer code + app | Code album communique aux invites |
+| 3 | Surveiller | Disque, erreurs upload, latence API |
+| 4 | Reveal | Verifier galerie accessible pour tous |
+| 5 | Export post-soiree | Archive photos pour participants (optionnel) |
+
+**Criteres de sortie**
+
+- [ ] Taux upload reussi > 95 %
+- [ ] Reveal a l'heure pour tous
+- [ ] Aucune fuite photo avant reveal
+- [ ] Retour utilisateurs collecte
+
+---
+
+#### V1.3 — Post-soiree (1–2 jours)
+
+| # | Tache | Detail |
+| --- | --- | --- |
+| 1 | Debrief | Bugs, friction UX, perf reseau |
+| 2 | Purge ou archivage | Selon Q7 |
+| 3 | Liste corrections | Prioriser pour V2 |
+
+**Fin V1** : premiere soiree tenue. Decision go/no-go pour V2.
+
+---
+
+### V2 — Fiabiliser et operer
+
+Objectif : rendre le systeme **reutilisable** pour d'autres evenements sans repartir de zero.
+
+#### V2.1 — Robustesse (1–2 semaines)
+
+| # | Tache | Detail |
+| --- | --- | --- |
+| 1 | CI backend (Q11) | Lint, tests, deploy automatique |
+| 2 | CI Android | Build APK sur tag |
+| 3 | Thumbnails (optionnel) | Si galerie lente avec 600+ originaux HD |
+| 4 | Gestion erreurs mobile | Etats offline, file d'attente persistante |
+| 5 | Rate limiting API | Protection upload abusif |
+
+---
+
+#### V2.2 — Migration infra optionnelle (1–2 semaines)
+
+| # | Tache | Detail |
+| --- | --- | --- |
+| 1 | Evaluer disque VPS | Si multi-evenements : migrer photos vers Scaleway/OVH |
+| 2 | Script migration MinIO → Scaleway | S3-compatible, zero downtime si possible |
+| 3 | Separer metadonnees / photos | Documenter gouvernance souverainete |
+| 4 | Lifecycle rules | Purge auto photos apres X jours |
+
+**Declencheur migration** : second evenement prevu OU disque VPS > 60 % utilise.
+
+---
+
+#### V2.3 — iOS industrialise (si necessaire)
+
+| # | Tache | Detail |
+| --- | --- | --- |
+| 1 | TestFlight stable | Builds reguliers |
+| 2 | Self-hosted runner (option) | Automatisation build iOS sur Mac |
+| 3 | Test sur 12 iPhones | Beta pre-evenement |
+
+**Fin V2** : stack operable pour plusieurs evenements.
+
+---
+
+### V3 — Aboutissement projet
+
+Objectif : livrer un produit **stable, documente, transferable** (meme si non commercialise).
+
+#### V3.1 — Documentation et transfert
+
+| # | Tache | Detail |
+| --- | --- | --- |
+| 1 | README complet | Setup local, deploy, build mobile |
+| 2 | Architecture doc | Schema infra, flux upload/reveal, modele donnees |
+| 3 | Runbook operationnel | Creer evenement, backup, restore, purge |
+| 4 | Decision log | Ce document + registre rempli |
+
+---
+
+#### V3.2 — Qualite et securite
+
+| # | Tache | Detail |
+| --- | --- | --- |
+| 1 | Audit securite basique | HTTPS, secrets, signed URLs, quotas |
+| 2 | Tests automatises | Parcours critique couvert |
+| 3 | Performance galerie | 200+ photos, scroll fluide |
+
+---
+
+#### V3.3 — Cloture
+
+| # | Tache | Detail |
+| --- | --- | --- |
+| 1 | Dernier evenement pilote | Validation V3 en conditions reelles |
+| 2 | Archivage code + infra | Tag release finale |
+| 3 | Retrospective | Lessons learned |
+
+**Fin V3** : projet abouti, utilisable ponctuellement sans toi au quotidien.
+
+---
+
+## 7. Timeline indicative
+
+Estimation solo, a ajuster apres Q1–Q12.
+
+```mermaid
+gantt
+    title Plan Flashgap - timeline indicative
+    dateFormat YYYY-MM-DD
+    section V0
+    V0.1 Infra API           :v01, 2026-01-01, 5d
+    V0.2 Upload Reveal       :v02, after v01, 5d
+    V0.3 Mobile Camera       :v03, after v02, 8d
+    V0.4 Galerie Test        :v04, after v03, 5d
+    section V1
+    V1.1 Prep soiree         :v11, after v04, 5d
+    V1.2 Jour J              :v12, after v11, 1d
+    V1.3 Post-soiree         :v13, after v12, 2d
+    section V2
+    V2.1 Robustesse          :v21, after v13, 10d
+    V2.2 Migration infra     :v22, after v21, 10d
+    V2.3 iOS industrialise   :v23, after v22, 7d
+    section V3
+    V3.1 Documentation       :v31, after v23, 5d
+    V3.2 Qualite securite    :v32, after v31, 5d
+    V3.3 Cloture             :v33, after v32, 3d
+```
+
+| Phase | Duree estimee | Prerequis |
+| --- | --- | --- |
+| V0 complet | 4–5 semaines | Decisions Q1–Q12 validees |
+| V1 | 1 semaine + soiree | V0 valide, **Q10 iOS tranchee** |
+| V2 | 3–4 semaines | V1 debriefee |
+| V3 | 2 semaines | V2 stable |
+
+---
+
+## 8. Checklist pre-soiree (V1)
+
+A imprimer / cocher avant le Jour J.
+
+- [ ] Registre des decisions (section 4) complete
+- [ ] VPS : espace disque > 8 Go libre
+- [ ] App installee sur tous les appareils cibles (Android + iOS)
+- [ ] APK Android + build iOS distribues et testes
+- [ ] Decision iOS V1 prise (Xcode manuel vs TestFlight)
+- [ ] Album cree, `reveal_at` confirme avec l'organisateur
+- [ ] Code album communique
+- [ ] Quota rappelle aux invites (>50 photos OK, plafond 100)
+- [ ] Plan B si VPS down (hotspot + retry upload)
+- [ ] Contact support technique identifie pendant la soiree
+
+---
+
+## 9. Risques et mitigations
+
+| Risque | Impact | Mitigation | Phase |
+| --- | --- | --- | --- |
+| Disque VPS plein (>100 photos/pers.) | Perte uploads | Quota 100, alerte 80 %, purge | V0+ |
+| Reseau soiree instable | Uploads echoues | Retry + queue offline | V0.3 |
+| Distribution iOS bloquee (12 iPhones, Xcode seul) | iPhones exclus | **TestFlight avant V1** | V1 |
+| Photos avant reveal | Confiance cassee | Reveal gate API + tests | V0.2 |
+| Panne VPS sans backup | Perte totale photos | Revoir Q12 avant V1 | V1 |
+| Galerie lente (originaux HD seuls) | UX degradee | Thumbnails en V2 si besoin | V1+ |
+| Qualite HD insuffisante | Produit degrade | Spec Q5 + tests metadonnees | V0.3 |
+
+---
+
+## 10. Prochaine action
+
+**Decisions Q1–Q12 validees le 2026-06-02.** Demarrer **V0.1 — Fondations infra et API**.
+
+Checklist immediate :
+
+1. Confirmer **hebergeur et region EU** du VPS
+2. Provisionner le VPS (Docker, firewall, HTTPS)
+3. Deployer Postgres + MinIO + Fastify (Docker Compose)
+4. Implementer endpoints album (code 6 car. + pseudo)
+
+A trancher en fin de V0.4 : **distribution iOS pour 12 iPhones** (TestFlight recommande malgre choix Xcode initial).
 
 ---
 
@@ -446,48 +802,29 @@ Ce choix respecte le point essentiel demande: `les photos restent sur une infras
 
 ### Apple
 
-- Apple Developer Program - choix d'adhesion: https://developer.apple.com/support/compare-memberships/
-- Apple Developer Program - tarif et inscription: https://developer.apple.com/programs/enroll/
-- TestFlight overview: https://developer.apple.com/help/app-store-connect/test-a-beta-version/testflight-overview/
-- Ad Hoc provisioning profile: https://developer.apple.com/help/account/provisioning-profiles/create-an-ad-hoc-provisioning-profile
-- On-device testing et compte gratuit: https://developer.apple.com/programs/
-- Personal Team et impossibilite de soumettre a l'App Store: https://developer.apple.com/library/archive/qa/qa1915/_index.html
+- Apple Developer Program : https://developer.apple.com/programs/enroll/
+- TestFlight : https://developer.apple.com/help/app-store-connect/test-a-beta-version/testflight-overview/
+- Ad Hoc provisioning : https://developer.apple.com/help/account/provisioning-profiles/create-an-ad-hoc-provisioning-profile
+- Personal Team : https://developer.apple.com/library/archive/qa/qa1915/_index.html
 
-### GitHub
+### Mobile
 
-- GitHub-hosted runners: https://docs.github.com/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners
-- Self-hosted runners: https://docs.github.com/actions/hosting-your-own-runners
-- Self-hosted runners reference: https://docs.github.com/actions/reference/runners/self-hosted-runners
-- Adding self-hosted runners: https://docs.github.com/en/actions/hosting-your-own-runners/adding-self-hosted-runners
+- Expo documentation : https://docs.expo.dev/
+- Expo dev builds : https://docs.expo.dev/develop/development-builds/introduction/
+- expo-camera : https://docs.expo.dev/versions/latest/sdk/camera/
 
-### Mobile frameworks
+### Infra
 
-- React Native - overview: https://reactnative.dev/
-- React Native - get started without a framework: https://reactnative.dev/docs/getting-started-without-a-framework
-- Flutter documentation: https://docs.flutter.dev/
-- Flutter get started: https://docs.flutter.dev/get-started/install
+- MinIO : https://min.io/docs/minio/linux/index.html
+- Scaleway Object Storage : https://www.scaleway.com/en/pricing/storage/
+- OVHcloud Object Storage : https://www.ovhcloud.com/en/public-cloud/object-storage/
 
-### Backend / BaaS / Serverless
+### CI
 
-- Supabase billing overview: https://supabase.com/docs/guides/platform/billing-on-supabase
-- Supabase Edge Functions: https://supabase.com/docs/guides/functions
-- Supabase Edge Functions pricing: https://supabase.com/docs/guides/functions/pricing
-- Supabase regions: https://supabase.com/docs/guides/platform/regions
-- Cloudflare Workers pricing: https://developers.cloudflare.com/workers/platform/pricing/
-- Railway pricing: https://docs.railway.com/pricing
-- Firebase pricing: https://firebase.google.com/pricing
-- Firebase Authentication: https://firebase.google.com/products/auth
+- GitHub Actions : https://docs.github.com/actions
+- Self-hosted runners : https://docs.github.com/actions/hosting-your-own-runners
 
-### Stockage photo souverain
+### Notes
 
-- Scaleway pricing - storage: https://www.scaleway.com/en/pricing/storage/
-- Scaleway - souverainete / cloud europeen: https://www.scaleway.com/
-- OVHcloud Object Storage: https://www.ovhcloud.com/en/public-cloud/object-storage
-- OVHcloud Public Cloud pricing: https://www.ovhcloud.com/en/public-cloud/prices/
-- OVHcloud data sovereignty: https://www.ovhcloud.com/en/about-us/data-sovereignty/
-
-### Notes sur les chiffres
-
-- Les couts mensuels donnes dans ce document sont des `ordres de grandeur`.
-- Les prix `OVHcloud` affiches a l'heure ont ete `convertis en approximation mensuelle` pour faciliter la comparaison.
-- Les prix et politiques Apple/cloud doivent etre `reverifies avant engagement`, surtout pour la distribution iPhone et le stockage photo.
+- Les couts et durees sont des ordres de grandeur.
+- Les prix cloud et politiques Apple doivent etre reverifies avant engagement.
