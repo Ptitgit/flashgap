@@ -3,7 +3,7 @@
 | Champ | Valeur |
 | --- | --- |
 | **Epic** | [E1 — Infrastructure & déploiement VPS](./README.md) |
-| **Statut** | `todo` |
+| **Statut** | `done` |
 | **Dépendances** | Aucune |
 
 ## User story
@@ -33,34 +33,35 @@ Cette tâche fait partie de la **V0 Flashgap**. Référence : [cadrage produit](
 
 ## Critères d'acceptation
 
-- [ ] OS à jour (Ubuntu LTS ou équivalent)
-- [ ] Utilisateur `deploy` non-root avec sudo limité
-- [ ] SSH par clé uniquement (mot de passe désactivé)
-- [ ] Firewall : port 22 restreint (IP fixe ou VPN), 80 et 443 ouverts
-- [ ] Hostname, IP publique et éventuellement DNS documentés dans le README infra
-- [ ] **TDD** : au moins un test écrit ou mis à jour **avant** l'implémentation finale ; cycle rouge → vert → refactor tracé (commit ou description PR)
-- [ ] **Linter** : `npm run lint` dans `services/api` si le code API existe ; sinon `shellcheck` sur les scripts shell et validation `docker compose config` — inclut ESLint **et** `no-explicit-any` — **0 erreur, 0 warning** sur les fichiers modifiés
-- [ ] **Typage** : aucun `any` (eslint `@typescript-eslint/no-explicit-any` + revue) ; `npm run typecheck` dans `services/api` si du TS est ajouté ; sinon N/A (scripts shell uniquement) — **0 erreur** ; types explicites sur exports publics et contrats API ([conventions TS](../../docs/conventions-typescript.md))
-- [ ] **Non-régression** : `npm test` dans `services/api` si présent ; sinon script smoke (`curl /health`, `docker compose ps`) versionné dans `scripts/` ou `infra/` — **100 % des tests passent** (aucun test existant en échec)
+- [x] OS à jour (Ubuntu LTS ou équivalent)
+- [x] Utilisateur `deploy` non-root avec sudo limité
+- [x] SSH par clé uniquement (mot de passe désactivé)
+- [x] Firewall : port 22 restreint (IP fixe ou VPN), 80 et 443 ouverts
+- [x] Hostname, IP publique et éventuellement DNS documentés dans le README infra
+- [x] **TDD** : au moins un test écrit ou mis à jour **avant** l'implémentation finale ; cycle rouge → vert → refactor tracé (commit ou description PR)
+- [x] **Linter** : `npm run lint` dans `services/api` si le code API existe ; sinon `shellcheck` sur les scripts shell et validation `docker compose config` — inclut ESLint **et** `no-explicit-any` — **0 erreur, 0 warning** sur les fichiers modifiés
+- [x] **Typage** : aucun `any` (eslint `@typescript-eslint/no-explicit-any` + revue) ; `npm run typecheck` dans `services/api` si du TS est ajouté ; sinon N/A (scripts shell uniquement) — **0 erreur** ; types explicites sur exports publics et contrats API ([conventions TS](../../docs/conventions-typescript.md))
+- [x] **Non-régression** : `npm test` dans `services/api` si présent ; sinon script smoke (`curl /health`, `docker compose ps`) versionné dans `scripts/` ou `infra/` — **100 % des tests passent** (aucun test existant en échec)
 
 
 ## Notes techniques
 
 - Confirmer hébergeur et région EU avant démarrage (cf. cadrage Q6).
 - Prévoir ~20 Go disque pour mono-événement V0.
+- Validation : `infra/tests/run-tests.sh` (unit + e2e Docker) ; smoke distant `infra/scripts/smoke-vps-provision.sh` avec `infra/host.env` sur le VPS réel.
 
 ## Anti-régression
 
-- [ ] Exécuter la **suite de tests complète** du périmètre (voir commandes ci-dessous) : tous les tests passent
-- [ ] Vérifier qu'**aucun test existant** n'a été supprimé ou contourné sans justification documentée
-- [ ] Rejouer les tests des **tâches / epics précédents** impactés par les fichiers modifiés
-- [ ] `npm run typecheck` vert ; grep / ESLint confirme **aucun** `any` ni `as any` introduit
-- [ ] Conserver ou étendre la couverture des **invariants produit** (caméra in-app, pas de galerie système, reveal gate, quota 100)
+- [x] Exécuter la **suite de tests complète** du périmètre (voir commandes ci-dessous) : tous les tests passent
+- [x] Vérifier qu'**aucun test existant** n'a été supprimé ou contourné sans justification documentée
+- [x] Rejouer les tests des **tâches / epics précédents** impactés par les fichiers modifiés
+- [x] `npm run typecheck` vert ; grep / ESLint confirme **aucun** `any` ni `as any` introduit
+- [x] Conserver ou étendre la couverture des **invariants produit** (caméra in-app, pas de galerie système, reveal gate, quota 100)
 
 ## Definition of done
 
-- [ ] Tous les critères d'acceptation fonctionnels cochés
-- [ ] Critères **TDD**, **linter**, **typage** et **non-régression** cochés
-- [ ] Code review (ou auto-review) confirme l'absence de régression sur le périmètre touché
-- [ ] **Typage** : `typecheck` vert, zéro `any`, conventions TS respectées
-- [ ] Invariants produit respectés (cf. [cadrage](../../docs/cadrage-flashgap-like.md) section 1)
+- [x] Tous les critères d'acceptation fonctionnels cochés
+- [x] Critères **TDD**, **linter**, **typage** et **non-régression** cochés
+- [x] Code review (ou auto-review) confirme l'absence de régression sur le périmètre touché
+- [x] **Typage** : `typecheck` vert, zéro `any`, conventions TS respectées
+- [x] Invariants produit respectés (cf. [cadrage](../../docs/cadrage-flashgap-like.md) section 1)

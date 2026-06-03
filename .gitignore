@@ -1,0 +1,14 @@
+# Local VPS connection (secrets / host-specific)
+infra/host.env
+
+# Dependencies (future monorepo)
+node_modules/
+dist/
+.env
+.env.local
+.env.production
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
