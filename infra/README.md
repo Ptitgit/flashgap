@@ -81,7 +81,7 @@ cp infra/.env.example infra/.env
 cd infra
 docker compose --env-file .env up -d --build
 docker compose ps
-curl -s "http://127.0.0.1:${API_PORT:-3000}/health"
+curl -s "http://127.0.0.1:${API_PORT:-3005}/health"
 ```
 
 Smoke versionné :
@@ -92,6 +92,21 @@ infra/scripts/smoke-compose-stack.sh
 
 API (Fastify) : `services/api` — `npm test`, `npm run lint`, `npm run typecheck`.
 
+## MinIO bucket privé (E1-US3)
+
+Au démarrage, le service **`minio-init`** crée le bucket `${MINIO_BUCKET}` (défaut `flashgap-photos`) et applique une politique **deny** sur l’accès anonyme (`mc anonymous set none`). Les credentials restent dans `.env` ; la console MinIO (port 9001) n’est **pas** publiée sur l’hôte.
+
+Variables ajoutées dans `.env.example` :
+
+- `MINIO_BUCKET` — nom du bucket S3-compatible (prépare la migration Scaleway V2)
+
+Vérification :
+
+```bash
+infra/tests/unit/minio-bucket.test.sh
+infra/tests/e2e/minio-bucket-private.sh   # nécessite Docker
+```
+
 ## Prochaine tâche
 
-[E1-US3 — MinIO bucket privé](../roadmap/e1-infrastructure-vps/E1-US3-minio-bucket-prive.md)
+[E1-US4 — HTTPS via reverse proxy](../roadmap/e1-infrastructure-vps/E1-US4-https-reverse-proxy.md)
