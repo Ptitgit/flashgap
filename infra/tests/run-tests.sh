@@ -10,6 +10,10 @@ echo "==> unit: checks"
 echo "==> unit: compose"
 "${ROOT}/tests/unit/compose.test.sh"
 
+echo "==> unit: minio bucket"
+chmod +x "${ROOT}/tests/unit/minio-bucket.test.sh"
+"${ROOT}/tests/unit/minio-bucket.test.sh"
+
 echo "==> e2e: docker provision (optional)"
 if [[ -x "${ROOT}/tests/e2e/docker-provision.sh" ]]; then
   "${ROOT}/tests/e2e/docker-provision.sh"
@@ -19,6 +23,12 @@ echo "==> e2e: docker compose stack (optional)"
 if [[ -x "${ROOT}/tests/e2e/docker-compose-stack.sh" ]]; then
   chmod +x "${ROOT}/tests/e2e/docker-compose-stack.sh"
   "${ROOT}/tests/e2e/docker-compose-stack.sh"
+fi
+
+echo "==> e2e: minio private bucket (optional)"
+if [[ -x "${ROOT}/tests/e2e/minio-bucket-private.sh" ]]; then
+  chmod +x "${ROOT}/tests/e2e/minio-bucket-private.sh"
+  "${ROOT}/tests/e2e/minio-bucket-private.sh"
 fi
 
 echo "==> shellcheck"
