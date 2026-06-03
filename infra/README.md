@@ -70,6 +70,28 @@ infra/tests/run-tests.sh
 - **E2E Docker** : valide `provision-vps.sh` dans Ubuntu 24.04 (`FLASHGAP_PROVISION_SKIP_UPGRADE=1` — pas de `apt upgrade`, réservé au test local)
 - **Smoke distant** : nécessite `infra/host.env` et un VPS provisionné (avec upgrade complet, sans `SKIP_UPGRADE`)
 
+## Docker Compose (E1-US2)
+
+Stack locale **Postgres + MinIO + API** (`infra/docker-compose.yml`). Seul le port **API** est publié sur l’hôte ; Postgres et MinIO restent sur le réseau Docker interne.
+
+```bash
+cp infra/.env.example infra/.env
+# éditer les mots de passe si besoin
+
+cd infra
+docker compose --env-file .env up -d --build
+docker compose ps
+curl -s "http://127.0.0.1:${API_PORT:-3000}/health"
+```
+
+Smoke versionné :
+
+```bash
+infra/scripts/smoke-compose-stack.sh
+```
+
+API (Fastify) : `services/api` — `npm test`, `npm run lint`, `npm run typecheck`.
+
 ## Prochaine tâche
 
-[E1-US2 — Docker Compose](../roadmap/e1-infrastructure-vps/E1-US2-docker-compose.md)
+[E1-US3 — MinIO bucket privé](../roadmap/e1-infrastructure-vps/E1-US3-minio-bucket-prive.md)

@@ -1,5 +1,6 @@
 # Local VPS connection (secrets / host-specific)
 infra/host.env
+infra/.env
 
 # Dependencies (future monorepo)
 node_modules/

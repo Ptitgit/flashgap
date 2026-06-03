@@ -1,0 +1,6 @@
+node_modules
+dist
+test
+*.md
+eslint.config.mjs
+tsconfig.eslint.json
