@@ -7,9 +7,18 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 echo "==> unit: checks"
 "${ROOT}/tests/unit/checks.test.sh"
 
+echo "==> unit: compose"
+"${ROOT}/tests/unit/compose.test.sh"
+
 echo "==> e2e: docker provision (optional)"
 if [[ -x "${ROOT}/tests/e2e/docker-provision.sh" ]]; then
   "${ROOT}/tests/e2e/docker-provision.sh"
+fi
+
+echo "==> e2e: docker compose stack (optional)"
+if [[ -x "${ROOT}/tests/e2e/docker-compose-stack.sh" ]]; then
+  chmod +x "${ROOT}/tests/e2e/docker-compose-stack.sh"
+  "${ROOT}/tests/e2e/docker-compose-stack.sh"
 fi
 
 echo "==> shellcheck"
