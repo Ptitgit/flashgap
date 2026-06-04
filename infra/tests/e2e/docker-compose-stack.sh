@@ -6,7 +6,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 COMPOSE_FILE="${ROOT}/docker-compose.yml"
 ENV_FILE="${ROOT}/.env.example"
 PROJECT="flashgap-compose-e2e-$$"
-API_PORT="${FLASHGAP_COMPOSE_E2E_API_PORT:-3100}"
+HTTPS_PORT="${FLASHGAP_COMPOSE_E2E_HTTPS_PORT:-3443}"
+HTTP_PORT="${FLASHGAP_COMPOSE_E2E_HTTP_PORT:-3180}"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "SKIP: docker not installed"
@@ -19,7 +20,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-export API_PORT
+export HTTPS_PORT HTTP_PORT PUBLIC_HOSTNAME=localhost
 
 echo "==> compose build & up (${PROJECT})"
 docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" \
@@ -27,13 +28,14 @@ docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" \
 
 echo "==> curl /health"
 for _ in $(seq 1 30); do
-  if curl -fsS "http://127.0.0.1:${API_PORT}/health" | grep -q '"ok"'; then
+  if curl -kfsS --resolve "localhost:${HTTPS_PORT}:127.0.0.1" \
+    "https://localhost:${HTTPS_PORT}/health" | grep -q '"ok"'; then
     echo "E2E docker compose stack: ok"
     exit 0
   fi
   sleep 2
 done
 
-echo "FAIL: /health not ready on port ${API_PORT}"
+echo "FAIL: /health not ready on https://localhost:${HTTPS_PORT}"
 docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" -p "${PROJECT}" ps
 exit 1

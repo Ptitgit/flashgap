@@ -14,6 +14,11 @@ echo "==> unit: minio bucket"
 chmod +x "${ROOT}/tests/unit/minio-bucket.test.sh"
 "${ROOT}/tests/unit/minio-bucket.test.sh"
 
+echo "==> unit: caddy reverse proxy"
+chmod +x "${ROOT}/tests/unit/caddy-reverse-proxy.test.sh" \
+  "${ROOT}/scripts/render-caddyfile.sh" "${ROOT}/scripts/caddy-entrypoint.sh"
+"${ROOT}/tests/unit/caddy-reverse-proxy.test.sh"
+
 echo "==> e2e: docker provision (optional)"
 if [[ -x "${ROOT}/tests/e2e/docker-provision.sh" ]]; then
   "${ROOT}/tests/e2e/docker-provision.sh"
@@ -29,6 +34,12 @@ echo "==> e2e: minio private bucket (optional)"
 if [[ -x "${ROOT}/tests/e2e/minio-bucket-private.sh" ]]; then
   chmod +x "${ROOT}/tests/e2e/minio-bucket-private.sh"
   "${ROOT}/tests/e2e/minio-bucket-private.sh"
+fi
+
+echo "==> e2e: HTTPS reverse proxy (optional)"
+if [[ -x "${ROOT}/tests/e2e/https-reverse-proxy.sh" ]]; then
+  chmod +x "${ROOT}/tests/e2e/https-reverse-proxy.sh"
+  "${ROOT}/tests/e2e/https-reverse-proxy.sh"
 fi
 
 echo "==> shellcheck"
