@@ -72,7 +72,7 @@ infra/tests/run-tests.sh
 
 ## Docker Compose (E1-US2)
 
-Stack locale **Postgres + MinIO + API** (`infra/docker-compose.yml`). Seul le port **API** est publié sur l’hôte ; Postgres et MinIO restent sur le réseau Docker interne.
+Stack locale **Postgres + MinIO + API + Caddy** (`infra/docker-compose.yml`). Seuls les ports **80/443** (Caddy) sont publiés sur l’hôte ; l’API, Postgres et MinIO restent sur le réseau Docker interne.
 
 ```bash
 cp infra/.env.example infra/.env
@@ -81,7 +81,8 @@ cp infra/.env.example infra/.env
 cd infra
 docker compose --env-file .env up -d --build
 docker compose ps
-curl -s "http://127.0.0.1:${API_PORT:-3005}/health"
+curl -kfsS --resolve "localhost:${HTTPS_PORT:-443}:127.0.0.1" \
+  "https://localhost:${HTTPS_PORT:-443}/health"
 ```
 
 Smoke versionné :
@@ -107,6 +108,25 @@ infra/tests/unit/minio-bucket.test.sh
 infra/tests/e2e/minio-bucket-private.sh   # nécessite Docker
 ```
 
+## HTTPS via Caddy (E1-US4)
+
+**Caddy** termine TLS et reverse-proxy vers `api:3000`. En local (`PUBLIC_HOSTNAME=localhost`), certificats **internes** (`tls internal`) ; en prod, renseigner le **domaine** et `ACME_EMAIL` pour Let's Encrypt automatique. HTTP redirige vers HTTPS.
+
+Variables (`.env.example`) :
+
+- `PUBLIC_HOSTNAME` — ex. `api.flashgap.example` (prod) ou `localhost` (dev)
+- `ACME_EMAIL` — contact Let's Encrypt (prod)
+- `HTTP_PORT` / `HTTPS_PORT` — mapping hôte (défaut 80/443)
+
+Vérification :
+
+```bash
+infra/tests/unit/caddy-reverse-proxy.test.sh
+infra/tests/e2e/https-reverse-proxy.sh   # nécessite Docker
+```
+
+Sur le VPS : DNS `A`/`AAAA` vers l’IP, ports 80/443 ouverts (UFW E1-US1), puis `PUBLIC_HOSTNAME` = FQDN réel dans `infra/.env`.
+
 ## Prochaine tâche
 
-[E1-US4 — HTTPS via reverse proxy](../roadmap/e1-infrastructure-vps/E1-US4-https-reverse-proxy.md)
+[E1-US5 — Script et doc de déploiement](../roadmap/e1-infrastructure-vps/E1-US5-script-deploiement.md)

@@ -14,7 +14,7 @@ set -a
 # shellcheck disable=SC1090,SC1091
 source "${ENV_FILE}"
 set +a
-API_PORT="${API_PORT:-3005}"
+HTTPS_PORT="${HTTPS_PORT:-443}"
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || {
@@ -29,8 +29,9 @@ require_cmd curl
 echo "==> docker compose ps"
 docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" ps
 
-echo "==> GET /health"
-body="$(curl -fsS "http://127.0.0.1:${API_PORT}/health")"
+echo "==> GET /health (HTTPS)"
+body="$(curl -kfsS --resolve "localhost:${HTTPS_PORT}:127.0.0.1" \
+  "https://localhost:${HTTPS_PORT}/health")"
 if ! grep -q '"status":"ok"' <<<"${body}" && ! grep -q '"status": "ok"' <<<"${body}"; then
   echo "FAIL: unexpected /health body: ${body}" >&2
   exit 1
