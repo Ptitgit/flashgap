@@ -127,6 +127,51 @@ infra/tests/e2e/https-reverse-proxy.sh   # nécessite Docker
 
 Sur le VPS : DNS `A`/`AAAA` vers l’IP, ports 80/443 ouverts (UFW E1-US1), puis `PUBLIC_HOSTNAME` = FQDN réel dans `infra/.env`.
 
-## Prochaine tâche
+## Déploiement (E1-US5)
 
-[E1-US5 — Script et doc de déploiement](../roadmap/e1-infrastructure-vps/E1-US5-script-deploiement.md)
+### Premier déploiement (VPS)
+
+Sur le serveur, en tant que **`deploy`** (après [provisionnement](#provisionnement-e1-us1)) :
+
+```bash
+# Docker installé (Ubuntu : https://docs.docker.com/engine/install/ubuntu/)
+sudo usermod -aG docker deploy   # puis reconnecter la session SSH
+
+git clone https://github.com/Ptitgit/flashgap.git
+cd flashgap/infra
+cp .env.example .env
+# éditer .env : mots de passe, PUBLIC_HOSTNAME (FQDN), ACME_EMAIL
+
+./scripts/deploy.sh --skip-git-pull
+```
+
+Vérifier : `curl -fsS "https://${PUBLIC_HOSTNAME}/health"` (certificat Let's Encrypt valide une fois le DNS propagé).
+
+### Redéploiement (après changement de code)
+
+Depuis `flashgap/infra` sur le VPS :
+
+```bash
+git pull
+docker compose --env-file .env up -d --build
+```
+
+Équivalent via le script versionné :
+
+```bash
+infra/scripts/deploy.sh
+# ou, depuis infra/ : ./scripts/deploy.sh
+```
+
+### Logs API
+
+```bash
+cd infra
+docker compose --env-file .env logs -f api
+```
+
+Smoke local (stack déjà up) : `infra/scripts/smoke-compose-stack.sh`.
+
+## Epic suivant
+
+[E2 — Backend albums & membres](../roadmap/e2-backend-albums-membres/README.md)
