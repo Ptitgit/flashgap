@@ -19,6 +19,10 @@ chmod +x "${ROOT}/tests/unit/caddy-reverse-proxy.test.sh" \
   "${ROOT}/scripts/render-caddyfile.sh" "${ROOT}/scripts/caddy-entrypoint.sh"
 "${ROOT}/tests/unit/caddy-reverse-proxy.test.sh"
 
+echo "==> unit: deploy script"
+chmod +x "${ROOT}/tests/unit/deploy.test.sh" "${ROOT}/scripts/deploy.sh"
+"${ROOT}/tests/unit/deploy.test.sh"
+
 echo "==> e2e: docker provision (optional)"
 if [[ -x "${ROOT}/tests/e2e/docker-provision.sh" ]]; then
   "${ROOT}/tests/e2e/docker-provision.sh"

@@ -127,6 +127,65 @@ infra/tests/e2e/https-reverse-proxy.sh   # nécessite Docker
 
 Sur le VPS : DNS `A`/`AAAA` vers l’IP, ports 80/443 ouverts (UFW E1-US1), puis `PUBLIC_HOSTNAME` = FQDN réel dans `infra/.env`.
 
-## Prochaine tâche
+## Déploiement (E1-US5)
 
-[E1-US5 — Script et doc de déploiement](../roadmap/e1-infrastructure-vps/E1-US5-script-deploiement.md)
+### Premier déploiement (VPS neuf)
+
+Sur le serveur, en tant qu’utilisateur **`deploy`** (après [provisionnement](#provisionnement-e1-us1)) :
+
+```bash
+git clone https://github.com/Ptitgit/flashgap.git
+cd flashgap/infra
+cp .env.example .env
+# éditer .env : mots de passe, PUBLIC_HOSTNAME (FQDN prod), ACME_EMAIL
+
+docker compose --env-file .env up -d --build
+docker compose ps
+curl -fsS "https://${PUBLIC_HOSTNAME}/health"
+```
+
+Ou via le script versionné (depuis la racine du dépôt cloné) :
+
+```bash
+infra/scripts/deploy.sh
+```
+
+### Redéploiement (après changement de code)
+
+```bash
+cd flashgap
+git pull
+cd infra
+docker compose --env-file .env up -d --build
+```
+
+Équivalent en une commande :
+
+```bash
+infra/scripts/deploy.sh
+```
+
+Le script exécute `git pull` à la racine du dépôt puis `docker compose up -d --build` dans `infra/`.
+
+### Logs API
+
+```bash
+cd flashgap/infra
+docker compose logs -f api
+```
+
+Ou :
+
+```bash
+infra/scripts/deploy.sh logs
+infra/scripts/deploy.sh logs api
+```
+
+### Tests déploiement (TDD)
+
+```bash
+infra/tests/unit/deploy.test.sh
+infra/scripts/deploy.sh --dry-run
+infra/scripts/deploy.sh logs --dry-run
+```
+
