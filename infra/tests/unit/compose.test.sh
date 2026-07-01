@@ -70,8 +70,7 @@ docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" config >/dev/null
 assert_ok "service postgres" assert_service_listed postgres
 assert_ok "service minio" assert_service_listed minio
 assert_ok "service api" assert_service_listed api
-assert_ok "service caddy" assert_service_listed caddy
-assert_ok "api not published to host" assert_service_has_no_published_ports api
+assert_ok "api not published to host (base)" assert_service_has_no_published_ports api
 
 assert_ok "postgres has persistent volume" assert_service_has_volume postgres
 assert_ok "minio has persistent volume" assert_service_has_volume minio

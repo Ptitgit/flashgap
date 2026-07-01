@@ -4,6 +4,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 COMPOSE_FILE="${ROOT}/docker-compose.yml"
+COMPOSE_CADDY="${ROOT}/docker-compose.caddy.yml"
 ENV_FILE="${ROOT}/.env.example"
 RENDER_SCRIPT="${ROOT}/scripts/render-caddyfile.sh"
 
@@ -24,13 +25,13 @@ assert_ok() {
 
 assert_service_listed() {
   local name="$1"
-  docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" config --services 2>/dev/null |
+  docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_CADDY}" --env-file "${ENV_FILE}" config --services 2>/dev/null |
     grep -qx "${name}"
 }
 
 assert_service_has_no_published_ports() {
   local name="$1"
-  ! docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" config 2>/dev/null |
+  ! docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_CADDY}" --env-file "${ENV_FILE}" config 2>/dev/null |
     awk -v svc="${name}" '
       $0 ~ "^  " svc ":" { in_svc=1; next }
       in_svc && /^  [a-z0-9_-]+:/ { in_svc=0 }
@@ -41,7 +42,7 @@ assert_service_has_no_published_ports() {
 
 assert_service_publishes_ports() {
   local name="$1"
-  docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" config 2>/dev/null |
+  docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_CADDY}" --env-file "${ENV_FILE}" config 2>/dev/null |
     awk -v svc="${name}" '
       $0 ~ "^  " svc ":" { in_svc=1; next }
       in_svc && /^  [a-z0-9_-]+:/ { in_svc=0 }
@@ -85,7 +86,7 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 echo "==> caddy reverse proxy config validates"
-docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" config >/dev/null
+docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_CADDY}" --env-file "${ENV_FILE}" config >/dev/null
 
 assert_ok "PUBLIC_HOSTNAME in .env.example" assert_env_example_has PUBLIC_HOSTNAME
 assert_ok "ACME_EMAIL in .env.example" assert_env_example_has ACME_EMAIL

@@ -3,7 +3,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-COMPOSE_FILE="${ROOT}/docker-compose.yml"
+COMPOSE_BASE="${ROOT}/docker-compose.yml"
+COMPOSE_CADDY="${ROOT}/docker-compose.caddy.yml"
 
 ENV_FILE="${ROOT}/.env"
 if [[ ! -f "${ENV_FILE}" ]]; then
@@ -27,7 +28,7 @@ require_cmd docker
 require_cmd curl
 
 echo "==> docker compose ps"
-docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" ps
+docker compose -f "${COMPOSE_BASE}" -f "${COMPOSE_CADDY}" --env-file "${ENV_FILE}" ps
 
 echo "==> GET /health (HTTPS)"
 body="$(curl -kfsS --resolve "localhost:${HTTPS_PORT}:127.0.0.1" \

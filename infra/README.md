@@ -72,20 +72,24 @@ infra/tests/run-tests.sh
 
 ## Docker Compose (E1-US2)
 
-Stack locale **Postgres + MinIO + API + Caddy** (`infra/docker-compose.yml`). Seuls les ports **80/443** (Caddy) sont publiés sur l’hôte ; l’API, Postgres et MinIO restent sur le réseau Docker interne.
+Stack **Postgres + MinIO + API** (`infra/docker-compose.yml`). Postgres et MinIO restent sur le réseau Docker interne.
+
+**Prod VPS** (défaut) : overlay `docker-compose.nginx-vps.yml` — API sur `127.0.0.1:3010`, **nginx** sur l’hôte termine TLS (80/443).
+
+**Dev local avec TLS** (optionnel) : ajouter `docker-compose.caddy.yml` (Caddy sur 80/443, certificats internes en local).
 
 ```bash
 cp infra/.env.example infra/.env
 # éditer les mots de passe si besoin
 
 cd infra
-docker compose --env-file .env up -d --build
-docker compose ps
+# Dev local HTTPS :
+docker compose -f docker-compose.yml -f docker-compose.caddy.yml --env-file .env up -d --build
 curl -kfsS --resolve "localhost:${HTTPS_PORT:-443}:127.0.0.1" \
   "https://localhost:${HTTPS_PORT:-443}/health"
 ```
 
-Smoke versionné :
+Smoke versionné (Caddy overlay) :
 
 ```bash
 infra/scripts/smoke-compose-stack.sh
@@ -108,25 +112,81 @@ infra/tests/unit/minio-bucket.test.sh
 infra/tests/e2e/minio-bucket-private.sh   # nécessite Docker
 ```
 
-## HTTPS via Caddy (E1-US4)
+## HTTPS — nginx (prod) / Caddy (dev optionnel)
 
-**Caddy** termine TLS et reverse-proxy vers `api:3000`. En local (`PUBLIC_HOSTNAME=localhost`), certificats **internes** (`tls internal`) ; en prod, renseigner le **domaine** et `ACME_EMAIL` pour Let's Encrypt automatique. HTTP redirige vers HTTPS.
+### Prod VPS (défaut)
+
+**nginx** sur l’hôte (déjà en place sur otrom.fr) reverse-proxy vers l’API Docker (`127.0.0.1:3010`).
+
+1. Déployer : `./scripts/deploy.sh`
+2. Inclure le snippet `infra/scripts/nginx-flashgap.conf` dans le vhost HTTPS existant
+3. URL API : `https://otrom.fr/flashgap/` (ex. `/flashgap/health`)
+
+Variables utiles (`.env`) :
+
+- `FLASHGAP_API_HOST_PORT` — port hôte (défaut `3010`, évite 3000–3002 PM2)
+
+### Dev local — Caddy (optionnel)
+
+Overlay `docker-compose.caddy.yml` : TLS local (`tls internal`) ou Let's Encrypt si `PUBLIC_HOSTNAME` + `ACME_EMAIL` sont renseignés.
 
 Variables (`.env.example`) :
 
-- `PUBLIC_HOSTNAME` — ex. `api.flashgap.example` (prod) ou `localhost` (dev)
-- `ACME_EMAIL` — contact Let's Encrypt (prod)
+- `PUBLIC_HOSTNAME` — `localhost` (dev) ou FQDN (VPS dédié avec `--with-caddy`)
+- `ACME_EMAIL` — contact Let's Encrypt
 - `HTTP_PORT` / `HTTPS_PORT` — mapping hôte (défaut 80/443)
 
 Vérification :
 
 ```bash
-infra/tests/unit/caddy-reverse-proxy.test.sh
-infra/tests/e2e/https-reverse-proxy.sh   # nécessite Docker
+infra/tests/unit/nginx-vps.test.sh
+infra/tests/unit/caddy-reverse-proxy.test.sh   # overlay Caddy
+infra/tests/e2e/https-reverse-proxy.sh       # nécessite Docker
 ```
 
-Sur le VPS : DNS `A`/`AAAA` vers l’IP, ports 80/443 ouverts (UFW E1-US1), puis `PUBLIC_HOSTNAME` = FQDN réel dans `infra/.env`.
+## Déploiement (E1-US5)
 
-## Prochaine tâche
+### Premier déploiement (VPS)
 
-[E1-US5 — Script et doc de déploiement](../roadmap/e1-infrastructure-vps/E1-US5-script-deploiement.md)
+Sur le serveur, en tant que **`deploy`** (après [provisionnement](#provisionnement-e1-us1)) :
+
+```bash
+git clone https://github.com/Ptitgit/flashgap.git
+cd flashgap/infra
+cp .env.example .env
+# éditer .env : mots de passe, FLASHGAP_API_HOST_PORT si besoin
+
+./scripts/deploy.sh --skip-git-pull
+```
+
+Puis **nginx** (root) : copier `scripts/nginx-flashgap.conf` dans `/etc/nginx/snippets/` et l’inclure dans le vhost HTTPS (voir commentaires dans le fichier).
+
+Vérifier : `curl -fsS "https://otrom.fr/flashgap/health"`
+
+### Redéploiement (après changement de code)
+
+Depuis `flashgap/infra` sur le VPS :
+
+```bash
+git pull
+./scripts/deploy.sh --skip-git-pull
+```
+
+Équivalent manuel :
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.nginx-vps.yml --env-file .env up -d --build
+```
+
+### Logs API
+
+```bash
+cd infra
+docker compose --env-file .env logs -f api
+```
+
+Smoke local (stack déjà up) : `infra/scripts/smoke-compose-stack.sh`.
+
+## Epic suivant
+
+[E2 — Backend albums & membres](../roadmap/e2-backend-albums-membres/README.md)

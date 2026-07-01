@@ -4,6 +4,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 COMPOSE_FILE="${ROOT}/docker-compose.yml"
+COMPOSE_CADDY="${ROOT}/docker-compose.caddy.yml"
 ENV_FILE="${ROOT}/.env.example"
 PROJECT="flashgap-https-e2e-$$"
 HTTP_PORT="${FLASHGAP_HTTPS_E2E_HTTP_PORT:-3180}"
@@ -15,7 +16,7 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 cleanup() {
-  docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" \
+  docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_CADDY}" --env-file "${ENV_FILE}" \
     -p "${PROJECT}" down -v --remove-orphans >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
@@ -25,7 +26,7 @@ export HTTP_PORT
 export HTTPS_PORT
 
 echo "==> compose up caddy + api (${PROJECT})"
-docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" \
+docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_CADDY}" --env-file "${ENV_FILE}" \
   -p "${PROJECT}" up -d --build --wait
 
 echo "==> GET /health over HTTPS"
@@ -39,7 +40,7 @@ done
 if ! curl -kfsS --resolve "localhost:${HTTPS_PORT}:127.0.0.1" \
   "https://localhost:${HTTPS_PORT}/health" | grep -q '"ok"'; then
   echo "FAIL: /health not ready on https://localhost:${HTTPS_PORT}"
-  docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" -p "${PROJECT}" ps
+  docker compose -f "${COMPOSE_FILE}" -f "${COMPOSE_CADDY}" --env-file "${ENV_FILE}" -p "${PROJECT}" ps
   exit 1
 fi
 

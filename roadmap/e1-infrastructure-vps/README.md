@@ -10,7 +10,7 @@ Aucune
 
 ## Definition of done (epic)
 
-`curl https://<host>/health` OK ; Postgres et MinIO joignables depuis le conteneur API.
+`curl https://<host>/flashgap/health` OK (nginx sur VPS partagé) ou `curl https://<host>/health` (Caddy en dev / VPS dédié) ; Postgres et MinIO joignables depuis le conteneur API.
 
 ## Tâches
 
