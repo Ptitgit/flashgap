@@ -1,0 +1,27 @@
+# systemd unit — install on VPS as deploy user.
+#
+#   sudo cp infra/systemd/flashgap-deploy-webhook.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now flashgap-deploy-webhook
+#   sudo systemctl status flashgap-deploy-webhook
+#
+# Requires FLASHGAP_GITHUB_WEBHOOK_SECRET in /home/deploy/flashgap/infra/.env
+
+[Unit]
+Description=Flashgap GitHub deploy webhook listener
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/flashgap/infra
+EnvironmentFile=/home/deploy/flashgap/infra/.env
+Environment=FLASHGAP_WEBHOOK_HOST=127.0.0.1
+ExecStart=/usr/bin/python3 /home/deploy/flashgap/infra/scripts/github-deploy-webhook-server.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

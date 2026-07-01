@@ -19,6 +19,7 @@ Aucune
 - [E1-US3 — MinIO — bucket privé](./E1-US3-minio-bucket-prive.md)
 - [E1-US4 — HTTPS via reverse proxy](./E1-US4-https-reverse-proxy.md)
 - [E1-US5 — Script et doc de déploiement](./E1-US5-script-deploiement.md)
+- [E1-US6 — Webhook GitHub pour déploiement auto](./E1-US6-webhook-deploy-github.md)
 
 ## Quality gates (TDD, linter, non-régression)
 
