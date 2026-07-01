@@ -15,7 +15,7 @@ E1 → E2 → E3 → E4 → E5 → E6 → E7 → E9
 
 | Epic | Titre | Tâches | Dépend de |
 | --- | --- | ---: | --- |
-| [E1](./e1-infrastructure-vps/README.md) | Infrastructure & déploiement VPS | 5 | — |
+| [E1](./e1-infrastructure-vps/README.md) | Infrastructure & déploiement VPS | 6 | — |
 | [E2](./e2-backend-albums-membres/README.md) | Backend — albums, membres & reveal schedule | 7 | E1 |
 | [E3](./e3-backend-upload-reveal/README.md) | Backend — upload photos, reveal gate & quotas | 8 | E2 |
 | [E4](./e4-mobile-onboarding/README.md) | Mobile — projet Expo, join album & session | 5 | E3 |

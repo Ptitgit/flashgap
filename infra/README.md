@@ -187,6 +187,58 @@ docker compose --env-file .env logs -f api
 
 Smoke local (stack déjà up) : `infra/scripts/smoke-compose-stack.sh`.
 
+## Webhook GitHub — déploiement auto (E1-US6)
+
+Déclenche `git pull` + `deploy.sh` à chaque **push sur `main`** (ex. après merge d'une PR).
+
+### 1. Secret et service sur le VPS
+
+Dans `infra/.env` :
+
+```bash
+FLASHGAP_GITHUB_WEBHOOK_SECRET=<secret-long-aleatoire>
+FLASHGAP_WEBHOOK_PORT=9876
+```
+
+Installer le listener (utilisateur `deploy`) :
+
+```bash
+sudo cp infra/systemd/flashgap-deploy-webhook.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now flashgap-deploy-webhook
+```
+
+### 2. nginx
+
+Inclure `infra/scripts/nginx-flashgap-deploy-hook.conf` dans le vhost HTTPS (à côté du snippet API).
+
+URL publique : `https://otrom.fr/flashgap-deploy-hook`
+
+### 3. Webhook GitHub
+
+Repo → **Settings → Webhooks → Add webhook** :
+
+| Champ | Valeur |
+| --- | --- |
+| **Payload URL** | `https://otrom.fr/flashgap-deploy-hook` |
+| **Content type** | `application/json` |
+| **Secret** | même valeur que `FLASHGAP_GITHUB_WEBHOOK_SECRET` |
+| **Events** | *Just the push event* |
+
+Seuls les push vers `refs/heads/main` lancent le deploy (`flock` évite les déploiements concurrents).
+
+Test local (sans VPS) :
+
+```bash
+infra/tests/unit/github-webhook.test.sh
+infra/tests/e2e/github-deploy-webhook.sh
+```
+
+Variables (`.env.example`) :
+
+- `FLASHGAP_GITHUB_WEBHOOK_SECRET` — secret partagé avec GitHub
+- `FLASHGAP_WEBHOOK_PORT` — port local du listener (défaut `9876`)
+
 ## Epic suivant
 
 [E2 — Backend albums & membres](../roadmap/e2-backend-albums-membres/README.md)

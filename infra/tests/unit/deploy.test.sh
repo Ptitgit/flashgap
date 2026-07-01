@@ -39,6 +39,13 @@ assert_ok "README documents first deploy clone" grep -qiE 'git clone|premier dé
 assert_ok "README documents .env setup" grep -qE '\.env\.example|\.env' "${README}"
 assert_ok "README documents shared VPS" grep -q 'nginx' "${README}" &&
   grep -q '3010' "${README}"
+assert_ok "github-webhook lib exists" test -f "${ROOT}/scripts/lib/github-webhook.sh"
+assert_ok "github deploy hook exists" test -f "${ROOT}/scripts/github-deploy-hook.sh"
+assert_ok "github webhook server exists" test -f "${ROOT}/scripts/github-deploy-webhook-server.py"
+assert_ok "nginx deploy hook snippet exists" test -f "${ROOT}/scripts/nginx-flashgap-deploy-hook.conf"
+assert_ok "systemd unit exists" test -f "${ROOT}/systemd/flashgap-deploy-webhook.service"
+assert_ok "README documents webhook" grep -q 'flashgap-deploy-hook' "${README}" &&
+  grep -q 'FLASHGAP_GITHUB_WEBHOOK_SECRET' "${README}"
 
 echo "---"
 echo "Ran ${TESTS_RUN} assertions, ${TESTS_FAILED} failed"

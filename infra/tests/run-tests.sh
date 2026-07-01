@@ -27,6 +27,10 @@ echo "==> unit: deploy"
 chmod +x "${ROOT}/tests/unit/deploy.test.sh" "${ROOT}/scripts/deploy.sh"
 "${ROOT}/tests/unit/deploy.test.sh"
 
+echo "==> unit: github webhook"
+chmod +x "${ROOT}/tests/unit/github-webhook.test.sh"
+"${ROOT}/tests/unit/github-webhook.test.sh"
+
 echo "==> e2e: docker provision (optional)"
 if [[ -x "${ROOT}/tests/e2e/docker-provision.sh" ]]; then
   "${ROOT}/tests/e2e/docker-provision.sh"
@@ -48,6 +52,22 @@ echo "==> e2e: HTTPS reverse proxy (optional)"
 if [[ -x "${ROOT}/tests/e2e/https-reverse-proxy.sh" ]]; then
   chmod +x "${ROOT}/tests/e2e/https-reverse-proxy.sh"
   "${ROOT}/tests/e2e/https-reverse-proxy.sh"
+fi
+
+echo "==> e2e: github deploy webhook (optional)"
+if [[ -x "${ROOT}/tests/e2e/github-deploy-webhook.sh" ]]; then
+  chmod +x "${ROOT}/tests/e2e/github-deploy-webhook.sh" \
+    "${ROOT}/scripts/github-deploy-hook.sh" \
+    "${ROOT}/scripts/github-deploy-webhook-server.py" \
+    "${ROOT}/tests/lib/webhook-linux-runner.sh"
+  "${ROOT}/tests/e2e/github-deploy-webhook.sh"
+fi
+
+echo "==> e2e: github deploy webhook integration"
+if [[ -x "${ROOT}/tests/e2e/github-deploy-webhook-integration.sh" ]]; then
+  chmod +x "${ROOT}/tests/e2e/github-deploy-webhook-integration.sh" \
+    "${ROOT}/tests/lib/webhook-linux-runner.sh"
+  "${ROOT}/tests/e2e/github-deploy-webhook-integration.sh"
 fi
 
 echo "==> shellcheck"
