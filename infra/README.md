@@ -227,6 +227,8 @@ Repo → **Settings → Webhooks → Add webhook** :
 
 Seuls les push vers `refs/heads/main` lancent le deploy (`flock` évite les déploiements concurrents).
 
+> **Prod** : webhook actif sur `https://otrom.fr/flashgap-deploy-hook` (vérifié 2026-07-01).
+
 Test local (sans VPS) :
 
 ```bash
