@@ -54,7 +54,7 @@ is_ubuntu_lts "${OS_RELEASE}" || {
   exit 1
 }
 
-SSHD_CONFIG="$(docker exec "${CONTAINER}" cat /etc/ssh/sshd_config.d/99-flashgap.conf)"
+SSHD_CONFIG="$(docker exec "${CONTAINER}" cat /etc/ssh/sshd_config.d/00-flashgap.conf)"
 [[ "$(sshd_password_auth_disabled "${SSHD_CONFIG}")" == "yes" ]]
 
 docker exec "${CONTAINER}" test -f /etc/sudoers.d/deploy

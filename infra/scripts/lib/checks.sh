@@ -30,6 +30,18 @@ is_ubuntu_lts() {
   return 1
 }
 
+# Ubuntu LTS or Debian stable (E1-US1: « Ubuntu LTS ou équivalent »).
+is_supported_vps_os() {
+  local os_release="$1"
+  if is_ubuntu_lts "${os_release}"; then
+    return 0
+  fi
+  if [[ "${os_release}" =~ ID=debian ]] && [[ "${os_release}" =~ VERSION_ID=\"1[12]\" ]]; then
+    return 0
+  fi
+  return 1
+}
+
 sshd_password_auth_disabled() {
   local sshd_config="$1"
   if echo "${sshd_config}" | grep -qiE '^[[:space:]]*PasswordAuthentication[[:space:]]+no'; then
@@ -42,7 +54,7 @@ sshd_password_auth_disabled() {
 
 ufw_ssh_restricted() {
   local ufw_status="$1"
-  if echo "${ufw_status}" | grep -qE '22/tcp[[:space:]]+ALLOW[[:space:]]+[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+'; then
+  if echo "${ufw_status}" | grep -qE '22/tcp[[:space:]]+ALLOW( IN)?[[:space:]]+[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+'; then
     echo "yes"
     return 0
   fi

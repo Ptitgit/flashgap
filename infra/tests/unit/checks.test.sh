@@ -51,6 +51,13 @@ assert_eq "yes" "$(is_ubuntu_lts "PRETTY_NAME=\"Ubuntu 24.04.1 LTS\"" && echo ye
 
 assert_eq "no" "$(is_ubuntu_lts "PRETTY_NAME=\"Debian GNU/Linux 12\"" && echo yes || echo no)" "debian not ubuntu"
 
+assert_eq "yes" "$(is_supported_vps_os "PRETTY_NAME=\"Ubuntu 24.04.1 LTS\"
+ID=ubuntu" && echo yes || echo no)" "supported ubuntu"
+
+assert_eq "yes" "$(is_supported_vps_os "PRETTY_NAME=\"Debian GNU/Linux 12 (bookworm)\"
+ID=debian
+VERSION_ID=\"12\"" && echo yes || echo no)" "supported debian 12"
+
 # --- sshd_password_auth_disabled ---
 
 assert_eq "yes" "$(sshd_password_auth_disabled "PasswordAuthentication no
@@ -62,6 +69,9 @@ assert_eq "no" "$(sshd_password_auth_disabled "PasswordAuthentication yes")" "pa
 
 assert_eq "yes" "$(ufw_ssh_restricted "Status: active
 22/tcp                     ALLOW       203.0.113.10")" "ufw ssh restricted to IP"
+
+assert_eq "yes" "$(ufw_ssh_restricted "Status: active
+22/tcp                     ALLOW IN    203.0.113.10")" "ufw ssh restricted verbose format"
 
 assert_eq "no" "$(ufw_ssh_restricted "Status: active
 22/tcp                     ALLOW       Anywhere")" "ufw ssh open to anywhere"

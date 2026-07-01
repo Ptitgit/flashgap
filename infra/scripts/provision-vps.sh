@@ -9,6 +9,7 @@
 #   FLASHGAP_DEPLOY_USER            — default: deploy
 #   FLASHGAP_PROVISION_SKIP_UPGRADE — set to 1 for fast e2e Docker tests only (prod: leave unset)
 #   FLASHGAP_PROVISION_E2E          — set to 1 in docker e2e only (skips UFW; use smoke on real VPS)
+#   FLASHGAP_PROVISION_SHARED_VPS   — set to 1 if other apps already use this host (no ufw reset)
 set -euo pipefail
 
 DEPLOY_USER="${FLASHGAP_DEPLOY_USER:-deploy}"
@@ -52,17 +53,22 @@ chmod 600 "/home/${DEPLOY_USER}/.ssh/authorized_keys"
 echo "==> limited sudo for ${DEPLOY_USER}"
 cat >/etc/sudoers.d/"${DEPLOY_USER}" <<EOF
 # Flashgap deploy — limited sudo (docker + ufw status only)
-${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/bin/docker, /usr/bin/docker compose, /usr/bin/docker-compose, /usr/sbin/ufw
+${DEPLOY_USER} ALL=(ALL) NOPASSWD: /usr/bin/docker, /usr/bin/docker compose, /usr/bin/docker-compose, /usr/sbin/ufw, /usr/sbin/sshd -T
 EOF
 chmod 440 /etc/sudoers.d/"${DEPLOY_USER}"
 
 echo "==> SSH hardening"
 mkdir -p /etc/ssh/sshd_config.d
-cat >/etc/ssh/sshd_config.d/99-flashgap.conf <<'EOF'
+# Before cloud-init drop-ins (sshd uses the first value for each keyword).
+cat >/etc/ssh/sshd_config.d/00-flashgap.conf <<'EOF'
 PasswordAuthentication no
 KbdInteractiveAuthentication no
 PermitRootLogin prohibit-password
 EOF
+if [[ -f /etc/ssh/sshd_config.d/50-cloud-init.conf ]]; then
+  sed -i 's/^PasswordAuthentication yes/PasswordAuthentication no/' \
+    /etc/ssh/sshd_config.d/50-cloud-init.conf
+fi
 if command -v systemctl >/dev/null 2>&1 && systemctl is-system-running --quiet 2>/dev/null; then
   systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true
 fi
@@ -71,9 +77,15 @@ if [[ "${FLASHGAP_PROVISION_E2E:-}" == "1" ]]; then
   echo "==> UFW skipped (e2e Docker — valider avec smoke-vps-provision.sh sur le VPS réel)"
 else
   echo "==> UFW"
-  ufw --force reset
-  ufw default deny incoming
-  ufw default allow outgoing
+  if [[ "${FLASHGAP_PROVISION_SHARED_VPS:-}" == "1" ]]; then
+    echo "    shared VPS — merge rules only (no ufw reset)"
+    ufw default deny incoming || true
+    ufw default allow outgoing || true
+  else
+    ufw --force reset
+    ufw default deny incoming
+    ufw default allow outgoing
+  fi
   ufw allow 80/tcp
   ufw allow 443/tcp
   if [[ -n "${SSH_RESTRICT_IP}" ]]; then

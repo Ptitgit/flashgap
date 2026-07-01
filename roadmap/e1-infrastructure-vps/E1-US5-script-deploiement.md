@@ -33,9 +33,9 @@ Cette tâche fait partie de la **V0 Flashgap**. Référence : [cadrage produit](
 
 ## Critères d'acceptation
 
-- [x] README section Deploy : `git pull`, `docker compose up -d --build`
+- [x] README section Deploy : `git pull`, `deploy.sh`, `docker compose up -d --build`
 - [x] Logs consultables : `docker compose logs -f api`
-- [x] Procédure de premier déploiement décrite (clone, `.env`, compose up)
+- [x] Procédure de premier déploiement décrite (clone, `.env`, deploy, nginx snippet)
 - [x] **TDD** : au moins un test écrit ou mis à jour **avant** l'implémentation finale ; cycle rouge → vert → refactor tracé (commit ou description PR)
 - [x] **Linter** : `npm run lint` dans `services/api` si le code API existe ; sinon `shellcheck` sur les scripts shell et validation `docker compose config` — inclut ESLint **et** `no-explicit-any` — **0 erreur, 0 warning** sur les fichiers modifiés
 - [x] **Typage** : aucun `any` (eslint `@typescript-eslint/no-explicit-any` + revue) ; `npm run typecheck` dans `services/api` si du TS est ajouté ; sinon N/A (scripts shell uniquement) — **0 erreur** ; types explicites sur exports publics et contrats API ([conventions TS](../../docs/conventions-typescript.md))
@@ -44,7 +44,8 @@ Cette tâche fait partie de la **V0 Flashgap**. Référence : [cadrage produit](
 
 ## Notes techniques
 
-_Aucune._
+- Script `infra/scripts/deploy.sh` : **nginx VPS par défaut** (`docker-compose.nginx-vps.yml`, API sur `127.0.0.1:3010`) ; `--with-caddy` pour dev / VPS dédié sans nginx.
+- Snippet nginx : `infra/scripts/nginx-flashgap.conf` (à inclure dans le vhost HTTPS existant).
 
 ## Anti-régression
 

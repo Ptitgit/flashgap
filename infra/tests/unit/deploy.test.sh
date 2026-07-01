@@ -27,6 +27,9 @@ assert_ok "deploy.sh executable" test -x "${DEPLOY_SCRIPT}"
 assert_ok "deploy runs git pull" grep -q 'git pull' "${DEPLOY_SCRIPT}"
 assert_ok "deploy runs compose up --build" grep -qE 'compose.*up -d --build' "${DEPLOY_SCRIPT}"
 assert_ok "deploy documents api logs" grep -qE 'logs -f api' "${DEPLOY_SCRIPT}"
+assert_ok "deploy supports optional Caddy" grep -q '\-\-with-caddy' "${DEPLOY_SCRIPT}"
+assert_ok "nginx VPS compose overlay exists" test -f "${ROOT}/docker-compose.nginx-vps.yml"
+assert_ok "nginx snippet exists" test -f "${ROOT}/scripts/nginx-flashgap.conf"
 assert_ok "README has Deploy section" grep -qE '^## (Déploiement|Deploy)' "${README}"
 assert_ok "README documents git pull" grep -q 'git pull' "${README}"
 assert_ok "README documents compose up --build" grep -q 'docker compose' "${README}" &&
@@ -34,6 +37,8 @@ assert_ok "README documents compose up --build" grep -q 'docker compose' "${READ
 assert_ok "README documents api logs" grep -qE 'logs -f api' "${README}"
 assert_ok "README documents first deploy clone" grep -qiE 'git clone|premier déploiement|first deploy' "${README}"
 assert_ok "README documents .env setup" grep -qE '\.env\.example|\.env' "${README}"
+assert_ok "README documents shared VPS" grep -q 'nginx' "${README}" &&
+  grep -q '3010' "${README}"
 
 echo "---"
 echo "Ran ${TESTS_RUN} assertions, ${TESTS_FAILED} failed"

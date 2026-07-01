@@ -1,0 +1,7 @@
+# Prod VPS — nginx sur l'hôte termine TLS (80/443) et proxy vers l'API.
+# Usage : infra/scripts/deploy.sh (défaut)
+# Port 3010 évite 3000–3002 (otrom.fr / PM2 sur le VPS actuel).
+services:
+  api:
+    ports:
+      - '127.0.0.1:${FLASHGAP_API_HOST_PORT:-3010}:3000'

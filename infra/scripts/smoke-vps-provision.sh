@@ -65,10 +65,10 @@ else
 fi
 
 OS_RELEASE="$(ssh_cmd "cat /etc/os-release" 2>/dev/null || true)"
-if is_ubuntu_lts "${OS_RELEASE}"; then
-  pass "OS is Ubuntu LTS"
+if is_supported_vps_os "${OS_RELEASE}"; then
+  pass "OS is supported (Ubuntu LTS or Debian stable)"
 else
-  fail "OS is not Ubuntu LTS — ${OS_RELEASE}"
+  fail "OS is not supported — ${OS_RELEASE}"
 fi
 
 DF_OUTPUT="$(ssh_cmd "df -h /" 2>/dev/null || true)"
@@ -80,7 +80,7 @@ else
   fail "root disk < ${MIN_GB} GB (${DISK_GB} GB)"
 fi
 
-SSHD_CONFIG="$(ssh_cmd "sudo cat /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf 2>/dev/null" || true)"
+SSHD_CONFIG="$(ssh_cmd "sudo /usr/sbin/sshd -T 2>/dev/null" || true)"
 if [[ "$(sshd_password_auth_disabled "${SSHD_CONFIG}")" == "yes" ]]; then
   pass "PasswordAuthentication disabled"
 else

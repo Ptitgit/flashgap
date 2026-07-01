@@ -48,6 +48,7 @@ Registre complémentaire au [cadrage produit](cadrage-flashgap-like.md).
 
 - Deux configs : `.env.development` (local / docker) et `.env.production` (VPS).
 - Pas d'environnement staging intermédiaire.
+- **Reverse proxy prod** : nginx sur l'hôte (VPS partagé, ex. otrom.fr) ; overlay Caddy réservé au dev local ou VPS dédié (`deploy.sh --with-caddy`).
 
 ### Hors scope V0 (inchangé)
 

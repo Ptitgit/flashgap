@@ -37,7 +37,7 @@ Cette tâche fait partie de la **V0 Flashgap**. Référence : [cadrage produit](
 - [x] Volumes persistants pour Postgres et MinIO
 - [x] Réseau Docker interne ; l'API ne expose pas Postgres/MinIO publiquement
 - [x] Fichier `.env.example` versionné (sans secrets)
-- [x] `docker compose up -d` démarre l'ensemble sans erreur
+- [x] `docker compose up -d` démarre postgres, minio et api (sans reverse proxy dans le compose de base)
 - [x] **TDD** : au moins un test écrit ou mis à jour **avant** l'implémentation finale ; cycle rouge → vert → refactor tracé (commit ou description PR)
 - [x] **Linter** : `npm run lint` dans `services/api` si le code API existe ; sinon `shellcheck` sur les scripts shell et validation `docker compose config` — inclut ESLint **et** `no-explicit-any` — **0 erreur, 0 warning** sur les fichiers modifiés
 - [x] **Typage** : aucun `any` (eslint `@typescript-eslint/no-explicit-any` + revue) ; `npm run typecheck` dans `services/api` si du TS est ajouté ; sinon N/A (scripts shell uniquement) — **0 erreur** ; types explicites sur exports publics et contrats API ([conventions TS](../../docs/conventions-typescript.md))
@@ -46,7 +46,7 @@ Cette tâche fait partie de la **V0 Flashgap**. Référence : [cadrage produit](
 
 ## Notes techniques
 
-- Structure suggérée : `infra/docker-compose.yml` à la racine du futur monorepo.
+- Structure : `infra/docker-compose.yml` (services de base) + overlays `docker-compose.nginx-vps.yml` (prod) ou `docker-compose.caddy.yml` (dev local TLS).
 
 ## Anti-régression
 

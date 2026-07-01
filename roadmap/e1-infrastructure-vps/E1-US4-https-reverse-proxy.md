@@ -45,7 +45,9 @@ Cette tâche fait partie de la **V0 Flashgap**. Référence : [cadrage produit](
 
 ## Notes techniques
 
-- L'API Fastify peut écouter en interne sur le réseau Docker ; le proxy termine TLS.
+- L'API Fastify écoute en interne sur le réseau Docker ; le proxy termine TLS.
+- **Prod VPS** (défaut) : **nginx** sur l'hôte (`docker-compose.nginx-vps.yml`, snippet `scripts/nginx-flashgap.conf`) — ex. `https://otrom.fr/flashgap/health`.
+- **Dev local** (optionnel) : overlay **Caddy** (`docker-compose.caddy.yml`, certificats internes ou Let's Encrypt).
 
 ## Anti-régression
 

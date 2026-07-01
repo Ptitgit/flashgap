@@ -14,7 +14,11 @@ echo "==> unit: minio bucket"
 chmod +x "${ROOT}/tests/unit/minio-bucket.test.sh"
 "${ROOT}/tests/unit/minio-bucket.test.sh"
 
-echo "==> unit: caddy reverse proxy"
+echo "==> unit: nginx VPS (prod default)"
+chmod +x "${ROOT}/tests/unit/nginx-vps.test.sh"
+"${ROOT}/tests/unit/nginx-vps.test.sh"
+
+echo "==> unit: caddy reverse proxy (dev overlay)"
 chmod +x "${ROOT}/tests/unit/caddy-reverse-proxy.test.sh" \
   "${ROOT}/scripts/render-caddyfile.sh" "${ROOT}/scripts/caddy-entrypoint.sh"
 "${ROOT}/tests/unit/caddy-reverse-proxy.test.sh"
@@ -59,6 +63,9 @@ if [[ -f "${ROOT}/host.env" ]]; then
   # shellcheck disable=SC1091
   source "${ROOT}/host.env"
   "${ROOT}/scripts/smoke-vps-provision.sh"
+  echo "==> smoke: remote VPS deploy (host.env present)"
+  chmod +x "${ROOT}/scripts/smoke-vps-deploy.sh"
+  "${ROOT}/scripts/smoke-vps-deploy.sh"
 else
   echo "==> smoke: skipped (no infra/host.env — configure after VPS provision)"
 fi
